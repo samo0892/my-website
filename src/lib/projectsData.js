@@ -7,7 +7,7 @@ export const projectsData = [
     image: "/images/projects/menglu_paris.webp",
     tag: ["Alle", "Shopify"],
     gitUrl: "/",
-    pageUrl: "/projects/menglu-paris",  
+    pageUrl: "projects/menglu-paris",  
   },
   {
     id: 2,
@@ -17,7 +17,7 @@ export const projectsData = [
     image: "/images/projects/varalida.webp",
     tag: ["Alle", "Shopify"],
     gitUrl: "/",
-    pageUrl: "/projects/varalida",  
+    pageUrl: "projects/varalida",  
   },
   {
     id: 3,
@@ -27,7 +27,7 @@ export const projectsData = [
     image: "/images/projects/death_night.webp",
     tag: ["Alle", "Shopify"],
     gitUrl: "/",
-    pageUrl: "/projects/death-night",  
+    pageUrl: "projects/death-night",  
   },
   {
     id: 4,
@@ -37,7 +37,7 @@ export const projectsData = [
     image: "/images/projects/baumawelt.webp",
     tag: ["Alle", "Shopify"],
     gitUrl: "/",
-    pageUrl: "/projects/baumawelt",  
+    pageUrl: "projects/baumawelt",  
   },
   {
     id: 5,
@@ -47,7 +47,7 @@ export const projectsData = [
     image: "/images/projects/5.png",
     tag: ["Alle", "Web"],
     gitUrl: "/",
-    pageUrl: "/projects/react-firebase-template",  
+    pageUrl: "projects/react-firebase-template",  
   },
   {
     id: 6,
@@ -57,6 +57,6 @@ export const projectsData = [
     image: "/images/projects/6.png",
     tag: ["Alle", "Web"],
     gitUrl: "/",
-    pageUrl: "/projects/fullstack-roadmap",  
+    pageUrl: "projects/fullstack-roadmap",  
   },
 ]; 
