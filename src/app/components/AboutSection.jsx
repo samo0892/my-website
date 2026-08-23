@@ -28,8 +28,8 @@ const TAB_DATA = [
     id: "education",
     content: (
       <ul className="list-disc pl-2">
-        <li>M.Sc. Informatik</li>
-        <li>B.Sc. Informatik</li>
+        <li>M.Sc. Medieninformatik – BHT Berlin</li>
+        <li>B.Eng. Technische Informatik – BHT Berlin</li>
       </ul>
     ),
   },
@@ -68,7 +68,7 @@ const AboutSection = () => {
         <div className="mt-4 md:mt-0 text-left flex flex-col h-full">
           <h2 className="text-4xl font-bold text-white mb-4">Über mich</h2>
           <p className="text-base lg:text-lg">
-            Ich bin Backend-Entwickler mit Schwerpunkt Java und einem Master in Informatik.
+            Ich bin Backend-Entwickler mit Schwerpunkt Java und einem Master in Medieninformatik.
             Seit rund sechs Jahren baue ich Anwendungen, die in Produktion laufen und
             gepflegt werden müssen – mit Jakarta EE, Spring Boot und Quarkus, meist in
             Umgebungen mit gewachsener Fachlogik, echten Datenmengen und entsprechenden
