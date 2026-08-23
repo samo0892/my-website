@@ -15,6 +15,8 @@ export function generateMetadata({ params }) {
   const post = getPost(params.slug);
   if (!post) return {};
 
+  const socialImage = post.ogImage ?? post.image ?? "/images/sam-codes.png";
+
   return {
     title: post.metaTitle,
     description: post.description,
@@ -30,12 +32,15 @@ export function generateMetadata({ params }) {
       locale: "de_DE",
       type: "article",
       publishedTime: post.date,
-      images: [
-        {
-          url: post.ogImage ?? post.image ?? "/images/sam-codes.png",
-          alt: post.title,
-        },
-      ],
+      images: [{ url: socialImage, alt: post.title }],
+    },
+    // Muss der Artikel selbst setzen: Next mischt die twitter-Angaben des
+    // Root-Layouts nicht in die Metadaten einer Unterseite.
+    twitter: {
+      card: "summary_large_image",
+      title: post.metaTitle,
+      description: post.description,
+      images: [socialImage],
     },
   };
 }
