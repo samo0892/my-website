@@ -7,17 +7,20 @@ import EmailSection from "../../components/EmailSection";
 export const metadata = {
   title: "Shopify SEO: 5 Tipps für bessere Sichtbarkeit",
   description: "So optimierst du deinen Shopify-Shop für Google & Co. und gewinnst mehr Besucher.",
+  alternates: {
+    canonical: "/blog/shopify-seo",
+  },
   openGraph: {
     title: "Shopify SEO: 5 Tipps für bessere Sichtbarkeit",
     description: "Mehr Reichweite für deinen Shopify-Shop durch gezielte SEO-Strategien.",
-    url: "https://deinshop.de/blogs/shopify-seo",
-    siteName: "Mein Shopify Blog",
+    url: "/blog/shopify-seo",
+    siteName: "sam.codes",
     images: [
       {
-        url: "/shopify-seo.jpg",
-        width: 1200,
-        height: 630,
-        alt: "Shopify SEO Tipps",
+        url: "/images/projects/menglu_paris.webp",
+        width: 3024,
+        height: 1646,
+        alt: "Shopify SEO",
       },
     ],
     locale: "de_DE",
