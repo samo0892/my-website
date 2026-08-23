@@ -25,3 +25,27 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
+
+/* Tailwind Typography setzt bei Inline-Code Backticks als Pseudo-Elemente. */
+.prose :where(code):not(:where([class~="not-prose"] *))::before,
+.prose :where(code):not(:where([class~="not-prose"] *))::after {
+  content: none;
+}
+
+.prose :where(code):not(:where(pre code)) {
+  color: #6ee7b7;
+  background-color: #1e1e1e;
+  border: 1px solid #33353f;
+  border-radius: 0.25rem;
+  padding: 0.15em 0.4em;
+  font-weight: 400;
+}
+
+.prose :where(pre) {
+  background-color: #18191e;
+  border: 1px solid #33353f;
+}
+
+.prose :where(pre code) {
+  color: #d1d5db;
+}

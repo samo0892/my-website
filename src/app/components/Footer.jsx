@@ -8,12 +8,20 @@ const Footer = () => {
         <span>                            <img src="/images/sam-codes-logo.svg" alt="sam.codes Logo" width="200" height="40" />
 </span>
         <p className="text-slate-600">All rights reserved.</p>
-        <Link
+        <div className="flex flex-row gap-4">
+          <a
+            href="/feed.xml"
+            className="text-sm text-slate-400 hover:text-white transition"
+          >
+            RSS
+          </a>
+          <Link
             href="/impressum"
             className="text-sm text-slate-400 hover:text-white transition"
           >
             Impressum
           </Link>
+        </div>
       </div>
     </footer>
   );
