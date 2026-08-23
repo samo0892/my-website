@@ -18,7 +18,11 @@ const readPost = (fileName) => {
     slug,
     content,
     title: data.title,
+    // Optional: abweichender <title> fuer Suchergebnisse, falls die
+    // H1 laenger sein soll als der Meta-Titel.
+    metaTitle: data.metaTitle ?? data.title,
     description: data.description ?? "",
+    keywords: data.keywords ?? [],
     date: data.date,
     image: data.image ?? null,
     tags: data.tags ?? [],

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
+import remarkGfm from "remark-gfm";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import EmailSection from "../../components/EmailSection";
@@ -15,8 +16,9 @@ export function generateMetadata({ params }) {
   if (!post) return {};
 
   return {
-    title: post.title,
+    title: post.metaTitle,
     description: post.description,
+    keywords: post.keywords.length ? post.keywords : undefined,
     alternates: {
       canonical: `/blog/${post.slug}`,
     },
@@ -28,7 +30,11 @@ export function generateMetadata({ params }) {
       locale: "de_DE",
       type: "article",
       publishedTime: post.date,
-      images: post.image ? [{ url: post.image, alt: post.title }] : undefined,
+      images: [
+        post.image
+          ? { url: post.image, alt: post.title }
+          : { url: "/images/sam-codes.png", alt: "sam.codes" },
+      ],
     },
   };
 }
@@ -72,7 +78,10 @@ export default function BlogPost({ params }) {
           )}
 
           <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-a:text-emerald-400">
-            <MDXRemote source={post.content} />
+            <MDXRemote
+              source={post.content}
+              options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
+            />
           </div>
         </article>
 
