@@ -24,7 +24,10 @@ const readPost = (fileName) => {
     description: data.description ?? "",
     keywords: data.keywords ?? [],
     date: data.date,
+    // image: Hero-Bild im Artikel. ogImage: Titelkarte fuer Social und
+    // Uebersicht, ohne im Artikel selbst den Titel zu doppeln.
     image: data.image ?? null,
+    ogImage: data.ogImage ?? null,
     tags: data.tags ?? [],
     readingTime: readingTime(content),
   };

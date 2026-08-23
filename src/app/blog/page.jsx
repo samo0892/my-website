@@ -42,13 +42,13 @@ export default function BlogPage() {
                     href={`/blog/${post.slug}`}
                     className="group block h-full rounded-xl bg-[#181818] overflow-hidden hover:ring-1 hover:ring-emerald-500/50 transition"
                   >
-                    {post.image && (
+                    {(post.ogImage ?? post.image) && (
                       <Image
-                        src={post.image}
+                        src={post.ogImage ?? post.image}
                         alt={post.title}
                         width={600}
                         height={340}
-                        className="h-48 w-full object-cover"
+                        className="aspect-[1200/630] w-full object-cover"
                       />
                     )}
                     <div className="p-5">

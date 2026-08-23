@@ -31,9 +31,10 @@ export function generateMetadata({ params }) {
       type: "article",
       publishedTime: post.date,
       images: [
-        post.image
-          ? { url: post.image, alt: post.title }
-          : { url: "/images/sam-codes.png", alt: "sam.codes" },
+        {
+          url: post.ogImage ?? post.image ?? "/images/sam-codes.png",
+          alt: post.title,
+        },
       ],
     },
   };

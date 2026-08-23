@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; }
+  body {
+    background: #121212;
+    font-family: "Poppins", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Emerald-Schimmer wie auf der Website */
+  .glow {
+    position: absolute;
+    width: 620px; height: 620px;
+    right: -180px; bottom: -260px;
+    background: radial-gradient(circle, rgba(6,95,70,0.85) 0%, rgba(18,18,18,0) 70%);
+    filter: blur(20px);
+  }
+  .frame {
+    position: relative;
+    height: 100%;
+    padding: 64px 72px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .bar { width: 8px; height: 40px; background: #4ADE80; border-radius: 2px; }
+  .wordmark { font-size: 32px; font-weight: 600; letter-spacing: -0.01em; }
+  h1 {
+    font-size: 64px;
+    line-height: 1.14;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    max-width: 15.5em;
+  }
+  h1.long { font-size: 52px; }
+  h1.verylong { font-size: 44px; }
+  .accent {
+    width: 96px; height: 6px; border-radius: 3px;
+    background: linear-gradient(90deg, #4ADE80 0%, #059669 100%);
+    margin-bottom: 28px;
+  }
+  .foot {
+    display: flex; align-items: baseline; justify-content: space-between;
+    font-size: 22px; color: #ADB7BE;
+  }
+  .foot .kicker { color: #4ADE80; font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="frame">
+    <div class="brand">
+      <div class="bar"></div>
+      <div class="wordmark">sam.codes</div>
+    </div>
+    <div>
+      <div class="accent"></div>
+      <h1 id="title">Titel</h1>
+    </div>
+    <div class="foot">
+      <span class="kicker" id="kicker">Java Backend &amp; KI</span>
+      <span>sam-codes.com</span>
+    </div>
+  </div>
+<script>
+  const params = new URLSearchParams(location.search);
+  const title = params.get("title") || "Titel";
+  const kicker = params.get("kicker");
+  const el = document.getElementById("title");
+  el.textContent = title;
+  if (kicker) document.getElementById("kicker").textContent = kicker;
+  if (title.length > 90) el.classList.add("verylong");
+  else if (title.length > 55) el.classList.add("long");
+</script>
+</body>
+</html>
