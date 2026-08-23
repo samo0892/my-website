@@ -9,14 +9,17 @@ const TAB_DATA = [
     id: "skills",
     content: (
       <ul className="list-disc pl-2">
-          <li>Liquid</li>
-          <li>Shopify CLI</li>
-          <li>JavaScript / TypeScript</li>
-          <li>HTML / CSS / SCSS</li>
-          <li>Tailwind CSS</li>
-          <li>React / Hydrogen</li>
-          <li>Shopify API</li>
-          <li>Node.js (Apps)</li>
+          <li>Java</li>
+          <li>Spring Boot</li>
+          <li>Quarkus</li>
+          <li>Jakarta EE</li>
+          <li>REST- und API-Design</li>
+          <li>JPA / Hibernate</li>
+          <li>SQL / relationale Datenbanken</li>
+          <li>Testing (JUnit, Integrationstests)</li>
+          <li>Docker / Containerisierung</li>
+          <li>LLM-Integration in Java-Anwendungen</li>
+          <li>KI-gestützte Entwicklung</li>
       </ul>
     ),
   },
@@ -25,8 +28,8 @@ const TAB_DATA = [
     id: "education",
     content: (
       <ul className="list-disc pl-2">
-        <li>Scrum Master</li>
-        <li>Universität in Berlin, Germany</li>
+        <li>M.Sc. Informatik</li>
+        <li>B.Sc. Informatik</li>
       </ul>
     ),
   },
@@ -35,8 +38,9 @@ const TAB_DATA = [
     id: "certifications",
     content: (
       <ul className="list-disc pl-2">
-        <li>Headless at Shopify for Developers</li>
+        <li>Scrum Master</li>
         <li>Shopify Development Fundamentals</li>
+        <li>Headless at Shopify for Developers</li>
       </ul>
     ),
   },
@@ -55,15 +59,26 @@ const AboutSection = () => {
   return (
     <section className="text-white" id="about">
       <div className="md:grid md:grid-cols-2 gap-8 items-center py-8 px-4 xl:gap-16 sm:py-16 xl:px-16">
-        <Image src="/images/about-me.webp" width={500} height={500} />
+        <Image
+          src="/images/about-me.webp"
+          alt="Samed Baldede bei der Arbeit"
+          width={500}
+          height={500}
+        />
         <div className="mt-4 md:mt-0 text-left flex flex-col h-full">
           <h2 className="text-4xl font-bold text-white mb-4">Über mich</h2>
           <p className="text-base lg:text-lg">
-            Ich bin ein Shopify-Entwickler mit einem starken Fokus auf der Erstellung schneller, skalierbarer und konversionsoptimierter Online-Shops. 
-            Ich arbeite mit Liquid, JavaScript, React und den APIs von Shopify, um benutzerdefinierte Designs und Headless-Storefronts zu erstellen. 
-            Ich habe Erfahrung mit Tools wie Shopify CLI, Tailwind CSS und Node.js für die App-Entwicklung. 
-            Ich lerne schnell, arbeite detailorientiert und bin stets auf der Suche nach neuen Möglichkeiten, um die Benutzererfahrung und die Leistung von Shops zu verbessern. 
-            Ich arbeite gerne mit anderen zusammen, um wirkungsvolle E-Commerce-Lösungen zu entwickeln.
+            Ich bin Backend-Entwickler mit Schwerpunkt Java und einem Master in Informatik.
+            Seit rund sechs Jahren baue ich Anwendungen, die in Produktion laufen und
+            gepflegt werden müssen – mit Jakarta EE, Spring Boot und Quarkus, meist in
+            Umgebungen mit gewachsener Fachlogik, echten Datenmengen und entsprechenden
+            Anforderungen an Nachvollziehbarkeit.
+          </p>
+          <p className="text-base lg:text-lg mt-4">
+            Mein aktueller Fokus liegt auf der Verbindung von KI und Enterprise-Backend:
+            Wie lassen sich Large Language Models sinnvoll in bestehende Java-Systeme
+            integrieren, und wie verändert KI-gestützte Entwicklung die Arbeit in Teams,
+            die keine grüne Wiese vor sich haben? Über beides schreibe ich hier.
           </p>
           <div className="flex flex-row justify-start mt-8">
             <TabButton

@@ -5,10 +5,11 @@ const inter = Inter({ subsets: ['latin'] })
 
 const SITE_URL = 'https://www.sam-codes.com'
 const SITE_NAME = 'sam.codes'
-const SITE_TITLE = 'sam.codes – Shopify Entwicklung aus Berlin'
+const SITE_TITLE = 'sam.codes – Java-Backend und KI'
 const SITE_DESCRIPTION =
-  'Samed Baldede entwickelt schnelle, conversion-optimierte Shopify-Shops: ' +
-  'individuelle Themes, Headless-Storefronts und Performance-Optimierung.'
+  'Samed Baldede entwickelt Backend-Systeme mit Java – Spring Boot, Quarkus, ' +
+  'Jakarta EE – und beschäftigt sich mit der Integration von LLMs in ' +
+  'bestehende Enterprise-Anwendungen.'
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
@@ -26,7 +27,7 @@ export const metadata = {
         url: '/images/sam-codes.png',
         width: 500,
         height: 500,
-        alt: 'sam.codes – Shopify Entwicklung',
+        alt: 'sam.codes – Java-Backend und KI',
       },
     ],
   },

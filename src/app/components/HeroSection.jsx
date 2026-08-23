@@ -24,11 +24,11 @@ const HeroSection = () => {
             sequence={[
               "Sam",
               1000,
-              "Web Developer",
+              "Java-Entwickler",
               1000,
-              "Shopify Developer",
+              "Backend-Architekt",
               1000,
-              "Software Engineer",
+              "KI-Integrator",
               1000,
             ]}
             wrapper="span"
@@ -37,8 +37,10 @@ const HeroSection = () => {
           />
         </h1>
         <p className="text-[#ADB7BE] text-base sm:text-lg mb-6 lg:text-xl">
-            Ich helfe Unternehmen dabei, erfolgreiche Shopify-Shops zu entwickeln – mit maßgeschneidertem Design, leistungsstarker Technologie und einem klaren Fokus auf Conversion. 
-            Von der ersten Idee bis zur Live-Schaltung bin ich Ihr zuverlässiger Partner.
+            Seit über sechs Jahren entwickle ich Backend-Systeme mit Java – von Jakarta-EE-Anwendungen
+            bis zu Services mit Spring Boot und Quarkus. Aktuell verbinde ich das mit KI:
+            Large Language Models dort nutzbar machen, wo gewachsene Fachlogik und
+            Enterprise-Anforderungen längst bestehen.
         </p>
         <div>
           <Link
@@ -47,14 +49,6 @@ const HeroSection = () => {
           >
             Kontakt
           </Link>
-          {/* <Link
-            href="/"
-            className="px-1 inline-block py-1 w-full sm:w-fit rounded-full bg-gradient-to-br from-green-500 to-emerald-500 hover:bg-emerald-700 text-white mt-3"
-          >
-            <span className="block bg-[#121212] hover:bg-emerald-700 rounded-full px-5 py-2">
-              Download CV
-            </span>
-          </Link> */}
         </div>
 
         </motion.div>
@@ -67,7 +61,7 @@ const HeroSection = () => {
           <div className="rounded-full bg-[#181818] w-[250px] h-[250px] lg:w-[400px] lg:h-[400px] relative">
             <Image
               src="/images/sam-codes.png"
-              alt="hero image"
+              alt="Samed Baldede"
               className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
               width={300}
               height={300}

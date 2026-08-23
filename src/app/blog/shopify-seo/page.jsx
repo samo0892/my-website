@@ -2,7 +2,6 @@ import Image from "next/image";
 import BlogArticle from "../../components/BlogArticle";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
-import TestimonialsSection from "../../components/TestimonialsSection";
 import EmailSection from "../../components/EmailSection";
 
 export const metadata = {
@@ -92,7 +91,6 @@ export default function ShopifySeoArticle() {
         </article>
       </section>
     <div className="container mt-24 mx-auto px-12 py-4">
-        <TestimonialsSection />
         <EmailSection />
         <Footer />
     </div>
