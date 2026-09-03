@@ -264,12 +264,12 @@ Für einfache Szenarien unterscheiden sich die Frameworks daher weniger darin, w
 
 Spannender wird es bei komplexeren Anforderungen.
 
-Wie sollen Queries transformiert werden?
-Werden mehrere Datenquellen benötigt?
-Müssen Ergebnisse neu bewertet werden?
-Wann soll überhaupt eine Suche stattfinden?
-Wie werden Zugriffsrechte auf Dokumente berücksichtigt?
-Wie misst man die Qualität der gefundenen Inhalte?
+- Wie sollen Queries transformiert werden?
+- Werden mehrere Datenquellen benötigt?
+- Müssen Ergebnisse neu bewertet werden?
+- Wann soll überhaupt eine Suche stattfinden?
+- Wie werden Zugriffsrechte auf Dokumente berücksichtigt?
+- Wie misst man die Qualität der gefundenen Inhalte?
 
 Spätestens an diesem Punkt wird deutlich, dass ein produktives RAG System wesentlich mehr ist als eine Vector Database plus LLM.
 
@@ -360,12 +360,12 @@ Für mich wäre die reine Existenz eines `Agent` Features trotzdem kein entschei
 
 In produktiven Projekten interessieren mich andere Fragen stärker.
 
-Wie transparent ist der Ablauf?
-Wie kann ich einzelne Entscheidungen nachvollziehen?
-Was passiert bei einem fehlerhaften Tool Call?
-Wie werden Kosten kontrolliert?
-Wie lassen sich Endlosschleifen verhindern?
-Wie kann ich das Verhalten testen?
+- Wie transparent ist der Ablauf?
+- Wie kann ich einzelne Entscheidungen nachvollziehen?
+- Was passiert bei einem fehlerhaften Tool Call?
+- Wie werden Kosten kontrolliert?
+- Wie lassen sich Endlosschleifen verhindern?
+- Wie kann ich das Verhalten testen?
 
 Und vor allem: Muss dieser Prozess überhaupt agentisch sein?
 
@@ -440,14 +440,14 @@ Ein produktives AI System ist eine andere Geschichte.
 
 Plötzlich entstehen Fragen, die in vielen Tutorials kaum vorkommen.
 
-Wie lange dauert eine Anfrage an das Modell?
-Wie viele Tokens wurden verwendet?
-Welcher Prompt wurde ausgeführt?
-Welches Tool wurde aufgerufen?
-Wie häufig schlägt eine Anfrage fehl?
-Wie hoch sind die durchschnittlichen Kosten pro Benutzer?
-Welche Modellversion wurde für eine Antwort verwendet?
-Wie verhält sich die Anwendung unter Last?
+- Wie lange dauert eine Anfrage an das Modell?
+- Wie viele Tokens wurden verwendet?
+- Welcher Prompt wurde ausgeführt?
+- Welches Tool wurde aufgerufen?
+- Wie häufig schlägt eine Anfrage fehl?
+- Wie hoch sind die durchschnittlichen Kosten pro Benutzer?
+- Welche Modellversion wurde für eine Antwort verwendet?
+- Wie verhält sich die Anwendung unter Last?
 
 Für klassische Backend Systeme sind Monitoring, Logging und Tracing längst selbstverständlich.
 
@@ -492,6 +492,8 @@ Ein Tool ruft einen bestehenden Customer Service auf.
 Die Anwendung besitzt weiterhin dieselben fachlichen Grenzen und Qualitätsanforderungen wie vorher.
 
 Genau bei dieser Art von Architektur spielt Spring AI seine Stärken aus.
+
+Wie ich eine solche Integration konkret aufbauen würde, habe ich in einem eigenen Artikel zu [LLMs mit Spring Boot](/blog/llms-mit-spring-boot-integrieren) beschrieben.
 
 ## Wann würde ich LangChain4j verwenden?
 
