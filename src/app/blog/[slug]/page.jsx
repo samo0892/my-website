@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
+import rehypePrettyCode from "rehype-pretty-code";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import EmailSection from "../../components/EmailSection";
@@ -45,6 +46,15 @@ export function generateMetadata({ params }) {
   };
 }
 
+// Syntax-Highlighting laeuft komplett zur Build-Zeit ueber Shiki, es landet
+// also kein Highlighter-JS im Bundle. keepBackground: false laesst den
+// Codeblock-Hintergrund aus globals.css stehen, statt den des Themes zu
+// uebernehmen; gefaerbt werden nur die Tokens.
+const prettyCodeOptions = {
+  theme: "one-dark-pro",
+  keepBackground: false,
+};
+
 export default function BlogPost({ params }) {
   const post = getPost(params.slug);
   if (!post) notFound();
@@ -86,7 +96,12 @@ export default function BlogPost({ params }) {
           <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-a:text-emerald-400">
             <MDXRemote
               source={post.content}
-              options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
+              options={{
+                mdxOptions: {
+                  remarkPlugins: [remarkGfm],
+                  rehypePlugins: [[rehypePrettyCode, prettyCodeOptions]],
+                },
+              }}
             />
           </div>
         </article>

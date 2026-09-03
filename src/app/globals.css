@@ -49,3 +49,18 @@ body {
 .prose :where(pre code) {
   color: #d1d5db;
 }
+
+/* rehype-pretty-code umschliesst jeden Codeblock zusaetzlich mit einer
+   <figure>. Typography nullt via "figure > *" die Abstaende des pre, deshalb
+   traegt sie die figure. Werte entsprechen dem pre-Abstand von prose-lg. */
+.prose :where(figure[data-rehype-pretty-code-figure]) {
+  margin-top: 2em;
+  margin-bottom: 2em;
+}
+
+/* Shiki setzt display:grid auf das <code>, damit jede Zeile eine eigene Row
+   ist. Grid-Items schrumpfen aber auf die Containerbreite, wodurch lange
+   Zeilen umbrechen statt im pre horizontal zu scrollen. */
+.prose :where(pre code) {
+  min-width: max-content;
+}
