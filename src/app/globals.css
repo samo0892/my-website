@@ -64,3 +64,29 @@ body {
 .prose :where(pre code) {
   min-width: max-content;
 }
+
+/* Sprach-Badge oben rechts im Codeblock. data-language-label setzt der
+   Rehype-Schritt in src/lib/rehypeCodeLanguage.js. Das pre bekommt
+   zusaetzliches padding-top, damit die erste Codezeile nicht unter dem
+   Badge durchlaeuft, wenn horizontal gescrollt wird. */
+.prose :where(figure[data-language-label]) {
+  position: relative;
+}
+
+.prose :where(figure[data-language-label]) > pre {
+  padding-top: 2.9em;
+}
+
+.prose :where(figure[data-language-label])::before {
+  content: attr(data-language-label);
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  padding: 0.5em 0.9em;
+  border-bottom-left-radius: 0.375rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: #ADB7BE;
+}

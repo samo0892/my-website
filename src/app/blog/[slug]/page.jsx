@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import rehypePrettyCode from "rehype-pretty-code";
+import rehypeCodeLanguage from "../../../lib/rehypeCodeLanguage";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import EmailSection from "../../components/EmailSection";
@@ -99,7 +100,10 @@ export default function BlogPost({ params }) {
               options={{
                 mdxOptions: {
                   remarkPlugins: [remarkGfm],
-                  rehypePlugins: [[rehypePrettyCode, prettyCodeOptions]],
+                  rehypePlugins: [
+                    [rehypePrettyCode, prettyCodeOptions],
+                    rehypeCodeLanguage,
+                  ],
                 },
               }}
             />
