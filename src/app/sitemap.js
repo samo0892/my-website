@@ -12,6 +12,7 @@ export default function sitemap() {
     { url: SITE_URL },
     { url: `${SITE_URL}/blog` },
     { url: `${SITE_URL}/impressum` },
+    { url: `${SITE_URL}/datenschutz` },
     ...posts,
   ];
 }
