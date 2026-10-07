@@ -26,6 +26,13 @@ body {
     rgb(var(--background-start-rgb));
 }
 
+/* Die Navbar ist fixed (bis 74px hoch). Ohne Abstand landen Sprungziele
+   wie /#projects mit ihrer Ueberschrift hinter der Leiste. Next scrollt
+   Anker per scrollIntoView(), das beruecksichtigt scroll-padding. */
+html {
+  scroll-padding-top: 6rem;
+}
+
 /* Tailwind Typography setzt bei Inline-Code Backticks als Pseudo-Elemente. */
 .prose :where(code):not(:where([class~="not-prose"] *))::before,
 .prose :where(code):not(:where([class~="not-prose"] *))::after {

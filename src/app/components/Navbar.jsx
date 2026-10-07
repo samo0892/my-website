@@ -68,7 +68,14 @@ const Navbar = () => {
           </ul>
         </div>
       </div>
-      {navbarOpen ? <MenuOverlay links={navLinks} /> : null}
+      {/* Anker wie /#about wechseln die Seite nicht, die Navbar bleibt also
+          gemountet. Ohne explizites Schliessen bliebe das Menue offen. */}
+      {navbarOpen ? (
+        <MenuOverlay
+          links={navLinks}
+          onLinkClick={() => setNavbarOpen(false)}
+        />
+      ) : null}
     </nav>
   );
 };
