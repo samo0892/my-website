@@ -20,7 +20,9 @@ export function generateMetadata({ params }) {
   const socialImage = post.ogImage ?? post.image ?? "/images/sam-codes.png";
 
   return {
-    title: post.metaTitle,
+    // absolute statt Template: metaTitle ist schon auf die Laenge in
+    // Suchergebnissen zugeschnitten, " | sam.codes" kaeme noch obendrauf.
+    title: { absolute: post.metaTitle },
     description: post.description,
     keywords: post.keywords.length ? post.keywords : undefined,
     alternates: {

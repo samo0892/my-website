@@ -13,7 +13,12 @@ const SITE_DESCRIPTION =
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),
-  title: SITE_TITLE,
+  // Unterseiten setzen nur ihren eigenen Titel, z. B. "Blog | sam.codes".
+  // Die Startseite selbst bekommt default.
+  title: {
+    default: SITE_TITLE,
+    template: `%s | ${SITE_NAME}`,
+  },
   description: SITE_DESCRIPTION,
   alternates: {
     types: {
