@@ -4,15 +4,14 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import EmailSection from "../components/EmailSection";
 import { getAllPosts, formatDate } from "../../lib/blog";
+import { pageMetadata } from "../../lib/site";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: "Blog",
   description:
     "Artikel zu Java-Backend-Entwicklung, Spring Boot, Quarkus und der Integration von LLMs in bestehende Systeme.",
-  alternates: {
-    canonical: "/blog",
-  },
-};
+  path: "/blog",
+});
 
 export default function BlogPage() {
   const posts = getAllPosts();
