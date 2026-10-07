@@ -20,7 +20,17 @@ const HeroSection = () => {
             Hi, ich bin{" "}
           </span>
           <br />
+          {/* Die Animation startet erst im Browser, im statischen HTML stuende
+              im h1 sonst nur "Hi, ich bin". Crawler und Screenreader lesen
+              deshalb diesen festen Text, die Animation ist aria-hidden, damit
+              keine halb getippten Woerter vorgelesen werden. Bei Aenderungen
+              an der sequence mitziehen. Das Leerzeichen am Ende trennt den
+              Text vom getippten Wort, wenn Google die Seite mit JS rendert. */}
+          <span className="sr-only">
+            Sam – Java-Entwickler, Backend-Architekt und KI-Integrator{" "}
+          </span>
           <TypeAnimation
+            aria-hidden="true"
             sequence={[
               "Sam",
               1000,
