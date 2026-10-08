@@ -14,12 +14,6 @@ const Footer = () => {
         />
         <p className="text-slate-600">All rights reserved.</p>
         <div className="flex flex-row gap-4">
-          <a
-            href="/feed.xml"
-            className="text-sm text-slate-400 hover:text-white transition"
-          >
-            RSS
-          </a>
           <Link
             href="/impressum"
             className="text-sm text-slate-400 hover:text-white transition"
