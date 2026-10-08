@@ -1,6 +1,8 @@
 export const SITE_URL = "https://www.sam-codes.com";
 export const SITE_NAME = "sam.codes";
 export const CONTACT_EMAIL = "hi@sam-codes.com";
+export const BOOKING_URL =
+  "https://calendly.com/samisfreelancing/sam-codes-erstgesprach";
 
 export const mailtoHref = (subject) =>
   `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`;

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { CheckIcon } from "@heroicons/react/24/outline";
-import { mailtoHref } from "../../lib/site";
+import { BOOKING_URL } from "../../lib/site";
 
 const PROMISES = [
   "Festpreis-Angebot nach dem Erstgespräch",
@@ -39,7 +39,9 @@ const HeroSection = () => {
           </p>
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
             <a
-              href={mailtoHref("Erstgespräch über sam.codes")}
+              href={BOOKING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-6 py-3 w-full sm:w-fit rounded-full bg-gradient-to-br from-green-500 to-emerald-500 hover:bg-green-600 text-white text-center"
             >
               Kostenloses Erstgespräch (30 Min)
