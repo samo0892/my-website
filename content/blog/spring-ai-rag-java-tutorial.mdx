@@ -1,0 +1,1184 @@
+---
+title: "RAG mit Spring Boot und Spring AI entwickeln: Ein vollständiges Java-Tutorial"
+metaTitle: "Spring AI RAG: Tutorial mit Java, Spring Boot & pgvector"
+description: "Lerne, wie du RAG mit Spring AI, Java und Spring Boot implementierst. Mit PostgreSQL, pgvector, Embeddings und vollständigem Praxisbeispiel."
+date: "2026-10-08"
+ogImage: "/images/og/spring-ai-rag-java-tutorial.png"
+tags: ["Java", "Spring Boot", "Spring AI", "RAG"]
+keywords:
+  - "Spring AI RAG"
+  - "RAG Java"
+  - "Spring Boot RAG"
+  - "Retrieval Augmented Generation Java"
+  - "Spring AI pgvector"
+  - "pgvector Spring Boot"
+  - "Spring AI VectorStore"
+  - "Spring AI QuestionAnswerAdvisor"
+  - "Spring AI Embeddings"
+  - "Java RAG Tutorial"
+---
+
+Large Language Models können Texte zusammenfassen, Fragen beantworten und komplexe Zusammenhänge erklären. Doch sobald sie mit unternehmensinternen Dokumenten, technischen Handbüchern oder aktuellen Informationen arbeiten sollen, stoßen sie an Grenzen.
+
+Ein Sprachmodell kennt schließlich nicht automatisch die Inhalte deiner Datenbank oder die Dokumentation deiner Anwendung.
+
+Genau hier kommt Retrieval Augmented Generation (RAG) ins Spiel.
+
+Mit RAG kannst du Large Language Models um Informationen aus eigenen Datenquellen erweitern, ohne das Modell dafür neu trainieren zu müssen. Das macht den Ansatz besonders interessant für Unternehmensanwendungen, interne Wissensdatenbanken und intelligente Assistenzsysteme.
+
+In diesem Tutorial entwickeln wir eine vollständige **Spring AI RAG**-Anwendung mit Java, Spring Boot, PostgreSQL und pgvector. Wir verarbeiten eigene Dokumente, erstellen Embeddings, speichern diese in einer Vektordatenbank und nutzen die gefundenen Informationen zur Beantwortung von Benutzerfragen.
+
+Dabei geht es nicht nur um die Integration eines LLMs, sondern auch um eine sinnvolle Architektur für reale Backend-Anwendungen.
+
+## Was ist Retrieval Augmented Generation (RAG)?
+
+Retrieval Augmented Generation beschreibt einen Ansatz, bei dem ein Large Language Model vor der Generierung einer Antwort zusätzliche Informationen aus einer externen Datenquelle erhält.
+
+Bei einer klassischen LLM-Anwendung wird eine Benutzerfrage direkt an das Sprachmodell geschickt. Das Modell erzeugt anschließend eine Antwort auf Grundlage seines Trainings und des bereitgestellten Kontexts.
+
+Das funktioniert für allgemeine Fragen häufig gut. Bei unternehmensspezifischen Informationen entstehen allerdings Probleme.
+
+Stell dir vor, du entwickelst einen internen KI-Assistenten für ein Softwareunternehmen. Mitarbeiter sollen Fragen zu Architekturentscheidungen, API-Dokumentationen oder Entwicklungsrichtlinien stellen können.
+
+Ein gewöhnliches Sprachmodell kennt diese internen Informationen nicht.
+
+Mit RAG ändert sich der Ablauf:
+
+1. Ein Benutzer stellt eine Frage.
+2. Die Anwendung sucht passende Informationen in einer Wissensdatenbank.
+3. Die gefundenen Inhalte werden als Kontext bereitgestellt.
+4. Das LLM generiert eine Antwort unter Berücksichtigung dieser Informationen.
+
+Das Modell greift also nicht direkt auf die gesamte Wissensdatenbank zu. Stattdessen übernimmt die Anwendung die Suche und stellt relevante Dokumentenausschnitte bereit.
+
+Dieser Unterschied ist entscheidend.
+
+RAG ermöglicht es, bestehende Sprachmodelle mit eigenen Informationen zu kombinieren. Gleichzeitig können sich die Wissensbestände unabhängig vom Modell weiterentwickeln.
+
+Allerdings garantiert RAG keine fehlerfreien Antworten. Die Qualität hängt unter anderem davon ab, welche Dokumente gefunden werden, wie diese aufbereitet sind und wie das Sprachmodell den bereitgestellten Kontext verwendet.
+
+## Wie funktioniert eine RAG-Architektur?
+
+Eine typische RAG-Anwendung besteht aus zwei getrennten Prozessen.
+
+Der erste Prozess bereitet vorhandene Dokumente auf und speichert sie für die spätere Suche. Der zweite verarbeitet Benutzerfragen und generiert passende Antworten.
+
+### 1. Indexing: Dokumente vorbereiten
+
+Bevor unsere Anwendung Fragen beantworten kann, müssen wir die verfügbaren Informationen verarbeiten.
+
+Dafür werden Dokumente aus unterschiedlichen Quellen geladen. Das können beispielsweise PDF-Dateien, Word-Dokumente, Markdown-Dateien oder Inhalte aus einer Datenbank sein.
+
+Anschließend werden die Texte in kleinere Abschnitte, sogenannte Chunks, aufgeteilt.
+
+Diese Aufteilung ist sinnvoll, weil ein einzelnes Dokument sehr viele Informationen enthalten kann. Für die Beantwortung einer konkreten Frage benötigen wir normalerweise nur einen kleinen Teil davon.
+
+Jeder Chunk wird anschließend durch ein Embedding Model in eine numerische Darstellung umgewandelt.
+
+Diese Darstellung nennen wir Embedding.
+
+Ein Embedding beschreibt den Inhalt eines Textabschnitts als Vektor. Texte mit ähnlicher Bedeutung liegen im Vektorraum idealerweise näher beieinander.
+
+Die erzeugten Vektoren werden zusammen mit den ursprünglichen Textabschnitten und zusätzlichen Metadaten in einer Vektordatenbank gespeichert.
+
+Die Indexing Pipeline sieht damit so aus:
+
+```text
+Dokumente (PDF, Word, Markdown, Datenbank)
+          │
+          ▼
+Text extrahieren
+          │
+          ▼
+In Chunks aufteilen
+          │
+          ▼
+Embeddings erzeugen (Embedding Model)
+          │
+          ▼
+Text, Embedding und Metadaten speichern
+(Vektordatenbank)
+```
+
+### 2. Retrieval: Relevante Inhalte finden
+
+Sobald ein Benutzer eine Frage stellt, erzeugen wir auch für diese Frage ein Embedding.
+
+Anschließend durchsucht unsere Anwendung die Vektordatenbank nach ähnlichen Vektoren.
+
+Anders als bei einer klassischen Volltextsuche müssen die gefundenen Dokumente nicht exakt dieselben Begriffe enthalten.
+
+Fragt ein Benutzer beispielsweise „Wie authentifizieren wir externe API-Anfragen?“, kann die semantische Suche auch ein Dokument finden, das die Verwendung von OAuth 2.0 und Access Tokens beschreibt.
+
+Die semantische Ähnlichkeit hilft uns dabei, relevante Inhalte zu identifizieren.
+
+### 3. Generation: Antwort mit Kontext erzeugen
+
+Die gefundenen Textabschnitte werden gemeinsam mit der ursprünglichen Benutzerfrage an das LLM übergeben.
+
+Das Modell generiert nun eine Antwort auf Grundlage der bereitgestellten Informationen.
+
+Retrieval und Generation bilden zusammen die zweite Pipeline, die Fragebeantwortung:
+
+```text
+Benutzerfrage
+      │
+      ▼
+Embedding der Frage erzeugen
+      │
+      ▼
+Ähnlichkeitssuche in der Vektordatenbank
+      │
+      ▼
+Relevante Chunks
+      │
+      ▼
+Prompt aus Frage und Kontext
+      │
+      ▼
+LLM generiert die Antwort
+```
+
+Diese Trennung zwischen Indexing und Retrieval ist auch aus architektonischer Sicht sinnvoll.
+
+Dokumente müssen nicht bei jeder Benutzerfrage erneut verarbeitet werden. Stattdessen können sie einmal indexiert und anschließend für beliebig viele Anfragen verwendet werden.
+
+## Warum Spring AI für RAG-Anwendungen mit Java?
+
+Wer eine RAG-Anwendung mit Java entwickeln möchte, muss mehrere technische Komponenten miteinander verbinden.
+
+Dazu gehören ein Sprachmodell, ein Embedding Model, eine Vektordatenbank sowie die Verarbeitung und Suche von Dokumenten.
+
+Du könntest sämtliche Integrationen selbst entwickeln. In den meisten Projekten wäre das allerdings unnötiger Aufwand.
+
+Hier kommt Spring AI ins Spiel.
+
+Spring AI bietet standardisierte Schnittstellen für unterschiedliche AI-Modelle, Embeddings und Vector Stores. Außerdem stellt das Framework Komponenten für die Dokumentenverarbeitung und Retrieval Augmented Generation bereit.
+
+Besonders interessant sind dabei folgende Abstraktionen:
+
+| Komponente              | Aufgabe                           |
+| ----------------------- | --------------------------------- |
+| `ChatClient`            | Anfragen an das Sprachmodell      |
+| `EmbeddingModel`        | Erzeugung numerischer Vektoren    |
+| `VectorStore`           | Speicherung und semantische Suche |
+| `DocumentReader`        | Text aus Dateien extrahieren      |
+| `TokenTextSplitter`     | Aufteilung von Texten in Chunks   |
+| `QuestionAnswerAdvisor` | Retrieval direkt im ChatClient    |
+
+Spring AI bringt mit dem `QuestionAnswerAdvisor` bereits eine Implementierung für einfache RAG-Abläufe mit. Für komplexere Retrieval-Pipelines stehen weitere Komponenten bereit, etwa der modular aufgebaute `RetrievalAugmentationAdvisor` ([Spring AI Doku](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)).
+
+Für Java-Entwickler ist das besonders praktisch, weil sich diese Bausteine in die gewohnte Spring-Boot-Architektur integrieren lassen.
+
+Wir können weiterhin mit Services, REST-Controllern, Dependency Injection und Konfigurationsdateien arbeiten.
+
+Falls du noch abwägst, ob Spring AI oder LangChain4j besser zu deinem Projekt passt, findest du eine ausführliche Gegenüberstellung in meinem Artikel [Spring AI vs. LangChain4j](/blog/spring-ai-vs-langchain4j).
+
+## Praxisbeispiel: Eine RAG-Anwendung mit Spring Boot entwickeln
+
+Für unser Tutorial bauen wir eine kleine Wissensdatenbank für interne technische Dokumentationen.
+
+Die Anwendung soll zwei Funktionen anbieten:
+
+- **Dokumente hochladen:** PDF-, Word- und Textdokumente werden verarbeitet und in unserer Vektordatenbank gespeichert.
+- **Fragen beantworten:** Benutzer können Fragen zu den gespeicherten Inhalten stellen und erhalten eine KI-generierte Antwort.
+
+Beide Funktionen bilden wir als getrennte Pfade ab, die sich nur den Vector Store teilen:
+
+```text
+Dokumentenverarbeitung            Fragebeantwortung
+
+POST /api/documents               POST /api/chat
+         │                                │
+         ▼                                ▼
+DocumentController                RagController
+         │                                │
+         ▼                                ▼
+DocumentIngestionService          RagService
+  Tika, TokenTextSplitter           ChatClient
+         │                          QuestionAnswerAdvisor
+         │ add()                          │ similaritySearch()
+         ▼                                ▼
+┌──────────────────────────────────────────────┐
+│    VectorStore (PostgreSQL mit pgvector)     │
+└──────────────────────────────────────────────┘
+```
+
+Die Dokumentenverarbeitung schreibt in den Vector Store, die Fragebeantwortung liest daraus. Dadurch lassen sich beide Pfade unabhängig voneinander ändern, testen und später auch getrennt skalieren.
+
+Wir verwenden dafür folgenden Tech-Stack:
+
+| Technologie    | Verwendung                           |
+| -------------- | ------------------------------------ |
+| Java 21        | Programmiersprache                   |
+| Spring Boot    | REST API und Backend                 |
+| Spring AI      | LLM-Integration und RAG              |
+| PostgreSQL     | Datenbank                            |
+| pgvector       | Speicherung und Suche von Embeddings |
+| OpenAI         | Chat- und Embedding-Modelle          |
+| Docker Compose | Lokale Datenbankumgebung             |
+
+### Warum PostgreSQL?
+
+Viele Backend-Anwendungen verwenden PostgreSQL bereits als relationale Datenbank. Mit der Erweiterung pgvector können wir zusätzlich Vektoren speichern und Ähnlichkeitssuchen durchführen.
+
+Wir benötigen für unser Beispiel also keine separate spezialisierte Vektordatenbank.
+
+Ob PostgreSQL langfristig die richtige Wahl bleibt, hängt unter anderem von der Datenmenge, der Suchlast und den Anforderungen an die Retrieval-Qualität ab.
+
+## Schritt 1: Spring Boot Projekt erstellen
+
+Wir beginnen mit einem neuen Spring Boot Projekt.
+
+Als Basis verwenden wir Java 21, Spring Boot 4.0.x und Spring AI 2.0.1. Diese Kombination orientiert sich an der aktuellen stabilen Spring-AI-Version und den offiziell unterstützten Spring-Boot-Versionen: Spring AI 2.0.x ist für Spring Boot 4.0.x und 4.1.x vorgesehen ([Spring AI: Getting Started](https://docs.spring.io/spring-ai/reference/getting-started.html)).
+
+Über [Spring Initializr](https://start.spring.io/) kannst du das Projekt erstellen. Alternativ legst du die Maven-Konfiguration selbst an.
+
+### Maven Dependencies konfigurieren
+
+Für unsere Anwendung benötigen wir Spring Web MVC, Spring JDBC, den PostgreSQL-Treiber und die Spring-AI-Komponenten.
+
+Zusätzlich verwenden wir Apache Tika, um Dokumente unterschiedlicher Formate einzulesen.
+
+Die zentrale Konfiguration in unserer `pom.xml` sieht folgendermaßen aus:
+
+```xml
+<properties>
+    <java.version>21</java.version>
+    <spring-ai.version>2.0.1</spring-ai.version>
+</properties>
+
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-bom</artifactId>
+            <version>${spring-ai.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-starter-model-openai</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-vector-store-advisor</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-tika-document-reader</artifactId>
+    </dependency>
+</dependencies>
+```
+
+Die Spring AI BOM übernimmt das Versionsmanagement der Spring-AI-Abhängigkeiten.
+
+Dadurch müssen wir die einzelnen Module nicht separat versionieren.
+
+Das Modul `spring-ai-vector-store-advisor` enthält den `QuestionAnswerAdvisor`, mit dem wir in Schritt 7 die Suche in den ChatClient einbinden.
+
+Die offiziellen Module für pgvector, OpenAI und die Dokumentenverarbeitung sind in der [Spring AI Dokumentation](https://docs.spring.io/spring-ai/reference/index.html) beschrieben.
+
+## Schritt 2: PostgreSQL mit pgvector starten
+
+Als Nächstes benötigen wir eine PostgreSQL-Datenbank mit aktivierter pgvector-Erweiterung.
+
+pgvector ergänzt PostgreSQL um einen eigenen Vektordatentyp und Operatoren für Ähnlichkeitssuchen.
+
+Dadurch können wir Embeddings direkt in PostgreSQL speichern und beispielsweise über die Kosinusdistanz miteinander vergleichen.
+
+Für unsere lokale Entwicklungsumgebung verwenden wir Docker Compose.
+
+Erstelle im Projektverzeichnis eine Datei namens `compose.yaml`:
+
+```yaml
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: spring-ai-postgres
+    environment:
+      POSTGRES_DB: ragdb
+      POSTGRES_USER: raguser
+      POSTGRES_PASSWORD: ragpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+Starte anschließend die Datenbank:
+
+```bash
+docker compose up -d
+```
+
+Damit steht PostgreSQL auf Port 5432 zur Verfügung.
+
+Die verwendete Docker-Image-Variante enthält bereits die pgvector-Erweiterung. Sie muss allerdings noch in der jeweiligen Datenbank aktiviert werden.
+
+In unserem Beispiel übernimmt Spring AI die benötigte Schema-Initialisierung beim Anwendungsstart.
+
+**Wichtig:** Die Zugangsdaten sind ausschließlich für die lokale Entwicklung vorgesehen. In produktiven Umgebungen sollten Passwörter über ein Secret Management bereitgestellt und Datenbankberechtigungen eingeschränkt werden.
+
+## Schritt 3: Spring AI und pgvector konfigurieren
+
+Jetzt verbinden wir unsere Spring Boot Anwendung mit PostgreSQL und OpenAI.
+
+Öffne dafür die Datei `src/main/resources/application.yml`:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ragdb
+    username: raguser
+    password: ${DB_PASSWORD:ragpassword}
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        model: gpt-4o-mini
+      embedding:
+        model: text-embedding-3-small
+
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+```
+
+Wer von Spring AI 1.x kommt: Die Modellnamen stehen in 2.0 direkt unter `chat.model` und `embedding.model`. Die frühere Schreibweise `chat.options.model` ist als deprecated markiert.
+
+Hier sind einige Einstellungen besonders relevant.
+
+### Embedding Model
+
+Mit `text-embedding-3-small` verwenden wir ein Modell, das Texte in numerische Vektoren umwandelt.
+
+In unserer Konfiguration erzeugt es Embeddings mit 1536 Dimensionen.
+
+Die Dimensionen des Embedding Models müssen mit der Definition der Vektorspalte in PostgreSQL übereinstimmen.
+
+Ein späterer Wechsel auf ein Embedding Model mit anderer Vektorlänge erfordert entsprechende Änderungen am Datenbankschema. Bereits gespeicherte Dokumente müssen in der Regel erneut eingebettet werden.
+
+### HNSW-Index
+
+Mit `HNSW` konfigurieren wir einen Index für die approximative Suche nach ähnlichen Vektoren.
+
+HNSW steht für Hierarchical Navigable Small World.
+
+Der Index ermöglicht insbesondere bei größeren Datenbeständen eine effiziente Suche, benötigt aber zusätzlichen Speicherplatz und verursacht Aufwand beim Aufbau sowie beim Einfügen neuer Vektoren.
+
+### Kosinusdistanz
+
+Mit `COSINE_DISTANCE` legen wir fest, wie die Ähnlichkeit der Vektoren berechnet wird.
+
+Die Kosinusdistanz betrachtet den Winkel zwischen Vektoren und eignet sich für viele Anwendungen mit Text-Embeddings.
+
+### Schema-Initialisierung
+
+Mit `initialize-schema: true` erlauben wir Spring AI, die erforderlichen Datenbankobjekte zu erstellen.
+
+Diese Option muss ausdrücklich aktiviert werden. Die automatische Schema-Initialisierung ist in aktuellen Spring-AI-Versionen standardmäßig deaktiviert ([Spring AI: PGvector](https://docs.spring.io/spring-ai/reference/api/vectordbs/pgvector.html)).
+
+Beim Start legt Spring AI dann die Erweiterung `vector`, die Tabelle `vector_store` mit einer Spalte vom Typ `vector(1536)` und den HNSW-Index an.
+
+In produktiven Umgebungen würde ich diese Aufgabe allerdings eher über kontrollierte Datenbankmigrationen mit Flyway oder Liquibase lösen.
+
+Für unser Tutorial genügt die automatische Initialisierung.
+
+Bevor wir die Anwendung starten, müssen wir noch den OpenAI API Key bereitstellen:
+
+```bash
+export OPENAI_API_KEY="your-api-key"
+```
+
+Damit ist die grundlegende Infrastruktur vorbereitet.
+
+## Schritt 4: Dokumente mit Spring AI verarbeiten
+
+Nun kommen wir zum ersten wichtigen Bestandteil unserer RAG-Anwendung: der Dokumentenverarbeitung.
+
+Wir möchten Dateien hochladen, deren Inhalte extrahieren, in kleinere Abschnitte aufteilen und anschließend als Embeddings speichern.
+
+Dafür erstellen wir einen eigenen `DocumentIngestionService`.
+
+### DocumentIngestionService implementieren
+
+```java
+package com.example.rag.service;
+
+import java.io.IOException;
+import java.util.List;
+
+import org.springframework.ai.document.Document;
+import org.springframework.ai.reader.tika.TikaDocumentReader;
+import org.springframework.ai.transformer.splitter.TokenTextSplitter;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+@Service
+public class DocumentIngestionService {
+
+    private final VectorStore vectorStore;
+
+    public DocumentIngestionService(VectorStore vectorStore) {
+        this.vectorStore = vectorStore;
+    }
+
+    public int ingest(MultipartFile file) throws IOException {
+
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException(
+                "Die Datei darf nicht leer sein."
+            );
+        }
+
+        var resource = new ByteArrayResource(file.getBytes());
+
+        var reader = new TikaDocumentReader(resource);
+
+        List<Document> documents = reader.read();
+
+        String filename = file.getOriginalFilename() == null
+            ? "unknown"
+            : file.getOriginalFilename();
+
+        documents.forEach(document ->
+            document.getMetadata().put(
+                "source", filename
+            )
+        );
+
+        var splitter = TokenTextSplitter.builder()
+            .withChunkSize(500)
+            .withMinChunkSizeChars(200)
+            .withMinChunkLengthToEmbed(10)
+            .withMaxNumChunks(10000)
+            .withKeepSeparator(true)
+            .build();
+
+        List<Document> chunks = splitter.apply(documents);
+
+        vectorStore.add(chunks);
+
+        return chunks.size();
+    }
+}
+```
+
+Schauen wir uns die einzelnen Schritte genauer an.
+
+### Dokumentinhalte extrahieren
+
+Der `TikaDocumentReader` verwendet Apache Tika, um Text aus Dateien zu extrahieren.
+
+Damit können wir unter anderem PDF-Dateien, Word-Dokumente und verschiedene textbasierte Formate verarbeiten.
+
+Das Ergebnis besteht aus Spring-AI-`Document`-Objekten.
+
+Ein Document enthält den eigentlichen Text sowie optionale Metadaten.
+
+### Metadaten ergänzen
+
+Anschließend ergänzen wir jedes Document um den ursprünglichen Dateinamen.
+
+Diese Information speichern wir unter dem Schlüssel `source`.
+
+Metadaten sind bei RAG-Anwendungen besonders wertvoll.
+
+Sie ermöglichen beispielsweise, die Quelle einer Information nachzuvollziehen, Dokumente zu filtern oder später Quellenangaben in Antworten anzuzeigen.
+
+In einer produktiven Anwendung würde ich zusätzlich eine eindeutige Dokument-ID, die Version, den Mandanten und gegebenenfalls Zugriffsberechtigungen speichern.
+
+### Dokumente in Chunks aufteilen
+
+Mit dem `TokenTextSplitter` teilen wir die extrahierten Inhalte in kleinere Textabschnitte.
+
+In unserem Beispiel konfigurieren wir eine Zielgröße von 500 Tokens.
+
+Warum ist Chunking überhaupt notwendig?
+
+Angenommen, wir haben ein technisches Handbuch mit 80 Seiten. Wenn wir das gesamte Dokument als einzelnes Embedding speichern, repräsentiert dieser Vektor viele unterschiedliche Themen gleichzeitig.
+
+Dadurch kann die semantische Suche weniger präzise werden.
+
+Kleinere Chunks ermöglichen es, gezielter die Abschnitte zu finden, die für eine konkrete Frage relevant sind.
+
+Allerdings gibt es keine universell optimale Chunk-Größe.
+
+Zu kleine Chunks verlieren möglicherweise wichtige Zusammenhänge. Zu große Chunks enthalten unter Umständen viele irrelevante Informationen.
+
+Die richtige Konfiguration hängt von den Dokumenten, den Fragestellungen und dem eingesetzten Modell ab.
+
+Spring AI stellt dafür eine konfigurierbare ETL-Pipeline bereit, die aus Readern, Transformern und Writern besteht ([Spring AI: ETL Pipeline](https://docs.spring.io/spring-ai/reference/api/etl-pipeline.html)).
+
+### Embeddings erzeugen und speichern
+
+Der wichtigste Teil unseres Services ist überraschend kurz:
+
+```java
+vectorStore.add(chunks);
+```
+
+Über diese Methode übergeben wir die aufbereiteten Dokumente an den Vector Store.
+
+Spring AI verwendet das konfigurierte `EmbeddingModel`, um die Textabschnitte in Vektoren umzuwandeln.
+
+Anschließend werden die Texte, Metadaten und Embeddings in PostgreSQL gespeichert.
+
+Wir müssen die Embedding API also nicht selbst aufrufen und auch keine eigenen SQL-Statements für die Speicherung der Vektoren schreiben.
+
+Genau darin liegt einer der Vorteile der Spring-AI-Abstraktionen.
+
+## Schritt 5: REST API für den Dokumentenupload erstellen
+
+Unser `DocumentIngestionService` funktioniert bisher nur innerhalb der Anwendung.
+
+Damit wir Dokumente von außen hochladen können, ergänzen wir einen REST-Controller.
+
+```java
+package com.example.rag.controller;
+
+import java.io.IOException;
+import java.util.Map;
+
+import com.example.rag.service.DocumentIngestionService;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+@RestController
+@RequestMapping("/api/documents")
+public class DocumentController {
+
+    private final DocumentIngestionService ingestionService;
+
+    public DocumentController(
+        DocumentIngestionService ingestionService
+    ) {
+        this.ingestionService = ingestionService;
+    }
+
+    @PostMapping(
+        consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public Map<String, Object> upload(
+        @RequestParam("file") MultipartFile file
+    ) throws IOException {
+
+        int chunks = ingestionService.ingest(file);
+
+        return Map.of(
+            "message", "Dokument erfolgreich verarbeitet",
+            "chunks", chunks
+        );
+    }
+}
+```
+
+Damit steht unser erster REST-Endpunkt zur Verfügung: `POST /api/documents`
+
+Wir können ihn beispielsweise mit cURL aufrufen:
+
+```bash
+curl -X POST \
+  http://localhost:8080/api/documents \
+  -F "file=@architecture.pdf"
+```
+
+Die Anwendung extrahiert den Text aus der Datei, erstellt Chunks, erzeugt Embeddings und speichert die Ergebnisse in PostgreSQL.
+
+Eine erfolgreiche Antwort könnte so aussehen:
+
+```json
+{
+  "message": "Dokument erfolgreich verarbeitet",
+  "chunks": 24
+}
+```
+
+Die Zahl der Chunks hängt natürlich von der Länge und dem Inhalt des hochgeladenen Dokuments ab.
+
+Damit haben wir den ersten Teil unserer RAG-Architektur implementiert.
+
+Für den lokalen Prototyp reicht das aus. Ein öffentlicher Upload-Endpunkt benötigt zusätzlich Authentifizierung, Dateitypprüfung, Ressourcenlimits und eine zuverlässige Fehlerbehandlung. Insbesondere sollten nicht beliebige Dateien allein auf Grundlage ihrer Dateiendung akzeptiert werden.
+
+## Schritt 6: Semantische Suche mit pgvector implementieren
+
+Unsere Dokumente liegen nun als Embeddings in PostgreSQL.
+
+Jetzt möchten wir diese Informationen nutzen, um Fragen zu beantworten.
+
+Bevor wir das Sprachmodell integrieren, schauen wir uns an, wie die semantische Suche funktioniert.
+
+Spring AI stellt dafür das Interface `VectorStore` bereit.
+
+Über die Methode `similaritySearch()` können wir nach Dokumenten suchen, die einer bestimmten Anfrage semantisch ähnlich sind.
+
+Ein einfacher Retrieval-Service könnte folgendermaßen aussehen:
+
+```java
+package com.example.rag.service;
+
+import java.util.List;
+
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.stereotype.Service;
+
+@Service
+public class DocumentSearchService {
+
+    private final VectorStore vectorStore;
+
+    public DocumentSearchService(VectorStore vectorStore) {
+        this.vectorStore = vectorStore;
+    }
+
+    public List<Document> search(String query) {
+
+        SearchRequest request = SearchRequest.builder()
+            .query(query)
+            .topK(5)
+            .similarityThreshold(0.7)
+            .build();
+
+        return vectorStore.similaritySearch(request);
+    }
+}
+```
+
+Hier sind zwei Parameter besonders interessant.
+
+### topK: Anzahl der gefundenen Dokumente
+
+Mit `topK(5)` legen wir fest, dass maximal fünf relevante Dokumentabschnitte zurückgegeben werden sollen.
+
+Eine größere Anzahl kann zusätzlichen Kontext liefern, erhöht allerdings auch die Menge der Informationen, die später an das Sprachmodell übertragen werden.
+
+Mehr Kontext führt nicht automatisch zu besseren Antworten.
+
+### similarityThreshold: Mindestähnlichkeit
+
+Mit `similarityThreshold(0.7)` definieren wir eine Mindestähnlichkeit für die zurückgegebenen Ergebnisse.
+
+Damit können wir verhindern, dass offensichtlich unpassende Dokumente in den weiteren Retrieval-Prozess gelangen.
+
+Der Wert 0,7 dient hier lediglich als Ausgangspunkt. In einer realen Anwendung sollte der Threshold anhand repräsentativer Benutzerfragen und erwarteter Suchergebnisse evaluiert werden.
+
+Die semantische Suche bildet das Herzstück unserer RAG-Anwendung.
+
+Wenn relevante Dokumente nicht gefunden werden, kann auch das beste Sprachmodell keine zuverlässige Antwort auf Grundlage dieser Dokumente erzeugen.
+
+## Schritt 7: RAG mit dem Spring AI ChatClient integrieren
+
+Jetzt verbinden wir unsere semantische Suche mit einem Large Language Model.
+
+Wir könnten dafür zunächst die passenden Dokumente über unseren `DocumentSearchService` abrufen und anschließend manuell in einen Prompt einfügen.
+
+Für einfache RAG-Anwendungen bietet Spring AI allerdings eine komfortablere Lösung: den `QuestionAnswerAdvisor`.
+
+Dieser übernimmt den typischen Retrieval-Prozess und ergänzt die Benutzeranfrage um relevante Dokumentinhalte aus dem Vector Store ([Spring AI: Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)).
+
+### ChatClient konfigurieren
+
+Zunächst erstellen wir eine Konfigurationsklasse.
+
+```java
+package com.example.rag.config;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class AiConfiguration {
+
+    @Bean
+    public ChatClient chatClient(
+        ChatClient.Builder builder,
+        VectorStore vectorStore
+    ) {
+
+        var searchRequest = SearchRequest.builder()
+            .topK(5)
+            .similarityThreshold(0.7)
+            .build();
+
+        var advisor = QuestionAnswerAdvisor.builder(vectorStore)
+            .searchRequest(searchRequest)
+            .build();
+
+        return builder
+            .defaultSystem("""
+                Du bist ein technischer Wissensassistent.
+
+                Beantworte Fragen ausschließlich anhand
+                der bereitgestellten Dokumentinformationen.
+
+                Wenn die Informationen nicht ausreichen,
+                sage ausdrücklich, dass du die Frage
+                anhand der verfügbaren Dokumente
+                nicht beantworten kannst.
+
+                Erfinde keine Fakten oder Quellen.
+                Antworte auf Deutsch.
+                """)
+            .defaultAdvisors(advisor)
+            .build();
+    }
+}
+```
+
+In dieser Konfiguration passiert einiges.
+
+Zunächst erstellen wir einen `QuestionAnswerAdvisor` und verbinden ihn mit unserem PostgreSQL Vector Store.
+
+Anschließend registrieren wir den Advisor als Standardkomponente des `ChatClient`.
+
+Bei einer Benutzeranfrage wird dadurch automatisch eine Ähnlichkeitssuche ausgeführt und der gefundene Kontext an das Sprachmodell weitergegeben. Als Suchanfrage verwendet der Advisor die Frage des Benutzers, deshalb enthält unser `SearchRequest` nur `topK` und den Threshold.
+
+Zusätzlich definieren wir einen System Prompt.
+
+Dieser weist das Modell an, ausschließlich auf Grundlage der verfügbaren Informationen zu antworten und fehlendes Wissen offen zu kommunizieren.
+
+Das reduziert das Risiko unbegründeter Antworten, ersetzt allerdings keine Validierung. Auch ein entsprechend konfiguriertes Modell kann Aussagen erzeugen, die nicht vollständig durch die gefundenen Dokumente gedeckt sind.
+
+## Schritt 8: REST API für Benutzerfragen entwickeln
+
+Jetzt fehlt nur noch ein REST-Endpunkt, über den Benutzer Fragen stellen können.
+
+Dafür erstellen wir zunächst einen `RagService`.
+
+```java
+package com.example.rag.service;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.stereotype.Service;
+
+@Service
+public class RagService {
+
+    private final ChatClient chatClient;
+
+    public RagService(ChatClient chatClient) {
+        this.chatClient = chatClient;
+    }
+
+    public String ask(String question) {
+
+        return chatClient.prompt()
+            .user(question)
+            .call()
+            .content();
+    }
+}
+```
+
+Der Service ist bewusst schlank gehalten.
+
+Die eigentliche Komplexität liegt in der Konfiguration des `ChatClient` und des `QuestionAnswerAdvisor`.
+
+Sobald `ask()` aufgerufen wird, durchläuft die Anfrage unseren RAG-Prozess.
+
+Als Nächstes erstellen wir den zugehörigen Controller.
+
+```java
+package com.example.rag.controller;
+
+import java.util.Map;
+
+import com.example.rag.service.RagService;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/chat")
+public class RagController {
+
+    private final RagService ragService;
+
+    public RagController(RagService ragService) {
+        this.ragService = ragService;
+    }
+
+    @PostMapping
+    public Map<String, String> ask(
+        @RequestBody QuestionRequest request
+    ) {
+
+        String answer = ragService.ask(request.question());
+
+        return Map.of("answer", answer);
+    }
+
+    public record QuestionRequest(String question) {
+    }
+}
+```
+
+Damit haben wir unseren zweiten REST-Endpunkt implementiert: `POST /api/chat`
+
+### RAG-Anwendung testen
+
+Starten wir zunächst die Anwendung:
+
+```bash
+mvn spring-boot:run
+```
+
+Anschließend laden wir ein Dokument hoch, beispielsweise eine interne Architektur-Dokumentation.
+
+```bash
+curl -X POST \
+  http://localhost:8080/api/documents \
+  -F "file=@architecture.pdf"
+```
+
+Nachdem das Dokument verarbeitet wurde, können wir eine Frage stellen:
+
+```bash
+curl -X POST \
+  http://localhost:8080/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Wie authentifizieren wir unsere REST APIs?"
+  }'
+```
+
+Wenn unser Dokument entsprechende Informationen enthält, könnte eine Antwort folgendermaßen aussehen:
+
+```json
+{
+  "answer": "Laut der internen Architektur-Dokumentation werden REST APIs über OAuth 2.0 mit JWT Access Tokens abgesichert. Die Tokens werden bei eingehenden Anfragen validiert."
+}
+```
+
+Das ist eine beispielhafte Antwort. Ihr tatsächlicher Inhalt hängt von den indexierten Dokumenten und dem eingesetzten Sprachmodell ab.
+
+Damit haben wir eine einfache, vollständige RAG-Pipeline implementiert.
+
+Unsere Anwendung kann Dokumente entgegennehmen, deren Inhalte indexieren, relevante Textabschnitte suchen und Benutzerfragen mit Unterstützung eines Sprachmodells beantworten.
+
+## Schritt 9: Die RAG-Architektur für produktive Anwendungen verbessern
+
+Unser bisheriges Beispiel zeigt die grundlegende Implementierung.
+
+Für einen Prototyp ist die Architektur ausreichend. In einer produktiven Unternehmensanwendung würde ich allerdings einige Punkte anders gestalten.
+
+Gerade bei RAG-Systemen entstehen viele Herausforderungen nicht bei der Kommunikation mit dem LLM, sondern bei der Dokumentenverarbeitung, der Datenqualität und dem Zugriff auf sensible Informationen.
+
+Allgemeine Themen wie die Kapselung des Modellzugriffs, Timeouts, Fehlerbehandlung und strukturierte Outputs habe ich im Artikel [LLMs mit Spring Boot integrieren](/blog/llms-mit-spring-boot-integrieren) beschrieben. Hier konzentriere ich mich auf die Punkte, die speziell RAG betreffen.
+
+### 1. Dokumentenverarbeitung asynchron ausführen
+
+Aktuell verarbeiten wir hochgeladene Dokumente direkt innerhalb des HTTP-Requests.
+
+Bei kleinen Dateien funktioniert das problemlos.
+
+Bei größeren Dokumenten oder mehreren gleichzeitigen Uploads kann die Verarbeitung allerdings länger dauern.
+
+Die Anwendung muss zunächst den Text extrahieren, Chunks erzeugen, Embeddings über die externe API erstellen und alles in PostgreSQL speichern.
+
+Währenddessen bleibt der Request geöffnet.
+
+Für produktive Anwendungen würde ich deshalb eine asynchrone Verarbeitung bevorzugen.
+
+Ein möglicher Ablauf wäre:
+
+1. Der Benutzer lädt ein Dokument hoch.
+2. Die API speichert das Dokument und erstellt einen Verarbeitungsauftrag.
+3. Ein Worker übernimmt die Dokumentenverarbeitung.
+4. Nach erfolgreicher Indexierung wird der Status aktualisiert.
+5. Die Anwendung stellt das Dokument für Suchanfragen bereit.
+
+Je nach Infrastruktur können dafür beispielsweise eine Message Queue oder separate Background Worker verwendet werden.
+
+Diese Architektur ermöglicht unter anderem eine zuverlässigere Fehlerbehandlung und eine bessere Skalierung der Dokumentenverarbeitung.
+
+### 2. Dokumente versionieren und aktualisieren
+
+Unser Beispiel fügt bei jedem Upload neue Chunks in den Vector Store ein.
+
+Was passiert aber, wenn wir dasselbe Dokument erneut hochladen?
+
+Dann entstehen möglicherweise doppelte Einträge.
+
+Noch problematischer wird es, wenn ein Dokument aktualisiert wurde und die alten Informationen weiterhin im Index vorhanden sind.
+
+Für eine produktive Lösung benötigen wir deshalb ein sauberes Dokumentenmanagement.
+
+Ich würde für jedes Dokument mindestens folgende Informationen verwalten:
+
+| Metadatum     | Verwendung                   |
+| ------------- | ---------------------------- |
+| `document_id` | Eindeutige Identifikation    |
+| `version`     | Dokumentversion              |
+| `source`      | Ursprüngliche Quelle         |
+| `created_at`  | Zeitpunkt der Erstellung     |
+| `updated_at`  | Letzte Aktualisierung        |
+| `tenant_id`   | Zuordnung zu einem Mandanten |
+
+Die ursprünglichen Dokumente und ihr Verarbeitungsstatus können in einer separaten relationalen Tabelle gespeichert werden.
+
+Der Vector Store enthält dagegen die Chunks und Embeddings.
+
+Bei einer Aktualisierung lassen sich alte Chunks gezielt entfernen und neue erstellen.
+
+### 3. Chunking an die Dokumentstruktur anpassen
+
+Der `TokenTextSplitter` ist ein guter Einstieg, berücksichtigt allerdings nicht automatisch die vollständige semantische Struktur eines Dokuments.
+
+In technischen Dokumentationen können beispielsweise Codeblöcke, Tabellen und zusammenhängende Abschnitte eine wichtige Rolle spielen.
+
+Wird ein Codebeispiel mitten in einer Methode aufgeteilt, verlieren die einzelnen Chunks unter Umständen ihren Zusammenhang.
+
+Für anspruchsvollere Anwendungen würde ich deshalb strukturorientiertes Chunking untersuchen.
+
+Dabei werden beispielsweise Überschriften, Absätze und Codeblöcke berücksichtigt.
+
+Auch eine Kombination aus kleineren Such-Chunks und größeren Kontextabschnitten kann sinnvoll sein.
+
+Die beste Strategie lässt sich allerdings nicht pauschal festlegen. Sie sollte anhand realer Fragen und Dokumente getestet werden.
+
+### 4. Hybrid Search statt ausschließlich Vector Search
+
+Semantische Suche ist eine der wichtigsten Komponenten von RAG. Sie ist allerdings nicht für jede Fragestellung gleichermaßen geeignet.
+
+Besonders bei exakten Bezeichnungen, Versionsnummern, Fehlercodes oder technischen Identifikatoren kann eine klassische Volltextsuche bessere Ergebnisse liefern.
+
+Angenommen, ein Benutzer sucht nach `NullPointerException in PaymentService.java`.
+
+Hier sind konkrete Begriffe möglicherweise wichtiger als die allgemeine semantische Ähnlichkeit.
+
+Eine interessante Erweiterung ist deshalb Hybrid Search.
+
+Dabei kombinieren wir zwei Suchverfahren:
+
+- **Vektorsuche** zur Ermittlung semantisch ähnlicher Inhalte.
+- **Volltextsuche** zur Ermittlung exakter Begriffe und Formulierungen.
+
+Die Ergebnisse können anschließend zusammengeführt und neu bewertet werden.
+
+Für PostgreSQL lässt sich das beispielsweise durch eine Kombination aus pgvector und den integrierten Full-Text-Search-Funktionen umsetzen.
+
+### 5. Zugriffsrechte bereits beim Retrieval berücksichtigen
+
+Ein besonders wichtiger Punkt bei unternehmensinternen RAG-Anwendungen ist die Datensicherheit.
+
+Stell dir vor, unsere Wissensdatenbank enthält sowohl allgemeine technische Dokumentationen als auch vertrauliche Vertragsinformationen.
+
+Nicht jeder Benutzer darf auf sämtliche Dokumente zugreifen.
+
+Deshalb reicht es nicht aus, ausschließlich den Chat-Endpunkt abzusichern.
+
+Die Berechtigungen müssen bereits bei der Suche nach relevanten Dokumenten berücksichtigt werden.
+
+Spring AI unterstützt dafür Metadatenfilter bei Vector-Store-Abfragen.
+
+Ein vereinfachtes Beispiel:
+
+```java
+SearchRequest request = SearchRequest.builder()
+    .query(question)
+    .topK(5)
+    .filterExpression("tenant_id == 'company-123'")
+    .build();
+```
+
+Damit begrenzen wir die Suche auf Dokumente eines bestimmten Mandanten. Voraussetzung ist, dass `tenant_id` bei der Indexierung als Metadatum an jedem Chunk gespeichert wurde.
+
+In einer realen Anwendung muss die Mandanten-ID aus dem vertrauenswürdigen Authentifizierungskontext stammen und darf nicht ungeprüft vom Benutzer übernommen werden.
+
+Außerdem sind je nach Sicherheitsanforderungen zusätzliche Maßnahmen notwendig, etwa dokumentbezogene Berechtigungen, Datenbankisolation und Audit Logging.
+
+Ein wichtiger Grundsatz lautet: **Informationen, auf die ein Benutzer nicht zugreifen darf, sollten gar nicht erst im Kontext des Sprachmodells landen.**
+
+### 6. Prompt Injection berücksichtigen
+
+Dokumente gelten in einer RAG-Anwendung als externe, nicht vertrauenswürdige Inhalte.
+
+Ein Dokument könnte beispielsweise Text enthalten, der versucht, dem Sprachmodell neue Anweisungen zu geben.
+
+Ein LLM sollte solche Inhalte als Daten behandeln und nicht als Anweisungen mit höherer Priorität.
+
+Neben einem klaren System Prompt sind deshalb zusätzliche Schutzmaßnahmen sinnvoll, insbesondere bei Tool Calling, externen Aktionen und sensiblen Daten.
+
+Dazu gehören beispielsweise die konsequente Trennung von Anweisungen und Dokumenteninhalt sowie Berechtigungsprüfungen außerhalb des Modells.
+
+## Schritt 10: Qualität und Performance der RAG-Anwendung messen
+
+Eine RAG-Anwendung sollte nicht allein danach bewertet werden, ob sie eine plausibel klingende Antwort erzeugt.
+
+Entscheidend ist, ob sie die richtigen Informationen findet und korrekt verwendet.
+
+Dafür müssen wir sowohl den Retrieval-Prozess als auch die Antwortgenerierung betrachten.
+
+### Retrieval Quality
+
+Zunächst sollten wir prüfen, ob die semantische Suche relevante Dokumente zurückgibt.
+
+Eine wichtige Kennzahl ist beispielsweise `Recall@K`.
+
+Sie beschreibt, welcher Anteil der als relevant gekennzeichneten Dokumente unter den ersten K Suchergebnissen gefunden wird.
+
+Wenn unsere Anwendung wichtige Informationen nicht findet, kann auch das Sprachmodell diese nicht zuverlässig berücksichtigen.
+
+### Answer Quality
+
+Anschließend bewerten wir die generierte Antwort.
+
+Dabei sind unter anderem folgende Fragen relevant:
+
+- Ist die Antwort fachlich korrekt?
+- Beantwortet sie tatsächlich die Benutzerfrage?
+- Sind die Aussagen durch die gefundenen Dokumente gedeckt?
+- Erkennt das System, wenn Informationen fehlen?
+- Werden gegebenenfalls die richtigen Quellen angegeben?
+
+Für die Evaluation würde ich einen festen Datensatz aus Fragen, erwarteten Informationen und relevanten Dokumenten erstellen.
+
+So können wir unterschiedliche Chunk-Größen, Embedding Models und Retrieval-Konfigurationen systematisch vergleichen.
+
+### Latenz und Kosten
+
+Neben der Antwortqualität spielen auch Performance und Betriebskosten eine wichtige Rolle.
+
+Eine RAG-Anfrage besteht häufig aus mehreren Schritten, die jeweils Zeit benötigen.
+
+| Prozess          | Möglicher Einfluss                         |
+| ---------------- | ------------------------------------------ |
+| Query Embedding  | Latenz und Kosten der Embedding API        |
+| Vector Search    | Datenbanklatenz und Suchperformance        |
+| Kontext aufbauen | Größe und Anzahl gefundener Chunks         |
+| LLM Inference    | Antwortzeit des Modells und Tokenverbrauch |
+
+Besonders hilfreich ist es, die Dauer dieser Schritte getrennt zu messen.
+
+Spring AI integriert sich dafür in die Observability-Funktionen des Spring-Ökosystems ([Spring AI: Observability](https://docs.spring.io/spring-ai/reference/observability/index.html)).
+
+Mit Micrometer, Metriken und Distributed Tracing können wir nachvollziehen, wo innerhalb unserer RAG-Pipeline Verzögerungen entstehen.
+
+## Wann lohnt sich RAG mit Spring AI?
+
+RAG ist besonders interessant für Anwendungen, die Antworten auf Grundlage umfangreicher oder sich regelmäßig ändernder Wissensbestände erzeugen sollen.
+
+Typische Anwendungsfälle sind:
+
+- **Interne Wissensdatenbanken:** Mitarbeiter können Fragen zu technischen Dokumentationen, Richtlinien oder internen Prozessen stellen.
+- **Technischer Kundensupport:** Ein KI-Assistent kann Produktdokumentationen und Supportartikel durchsuchen, um Fragen zu beantworten.
+- **Softwareentwicklung:** Entwickler können Architekturentscheidungen, API-Spezifikationen und interne Entwicklungsrichtlinien abfragen.
+- **Dokumentenbasierte Fachanwendungen:** Informationen aus Handbüchern, Produktbeschreibungen oder freigegebenen Vertragsdokumenten können für Benutzer zugänglich gemacht werden.
+
+RAG ist allerdings nicht für jeden Anwendungsfall die richtige Lösung.
+
+Wenn du ausschließlich strukturierte Daten aus einer relationalen Datenbank abrufen möchtest, kann eine klassische API mit gezielten SQL-Abfragen die bessere Wahl sein.
+
+Auch für deterministische Geschäftsprozesse sollte ein LLM nicht die eigentliche Geschäftslogik ersetzen.
+
+Die Stärke von RAG liegt dort, wo unstrukturierte Informationen durchsucht und für eine natürlichsprachliche Antwort aufbereitet werden müssen.
+
+## Fazit: RAG mit Spring Boot und Spring AI
+
+Retrieval Augmented Generation ist ein leistungsfähiger Ansatz, um Large Language Models mit eigenen Informationen zu verbinden.
+
+Mit Spring AI lässt sich eine entsprechende Architektur gut in bestehende Java- und Spring-Boot-Anwendungen integrieren.
+
+In diesem Tutorial haben wir eine einfache RAG-Anwendung aufgebaut, die Dokumente verarbeitet, Embeddings erstellt, diese in PostgreSQL mit pgvector speichert und relevante Inhalte für die Antwortgenerierung bereitstellt.
+
+Dabei zeigt sich, dass die technische Integration eines Sprachmodells nur ein Teil der eigentlichen Herausforderung ist.
+
+Für eine zuverlässige RAG-Anwendung spielen insbesondere die Qualität der Dokumentenverarbeitung, die Suchstrategie, das Berechtigungsmodell und die Evaluation eine entscheidende Rolle.
+
+Mein wichtigster Architekturgrundsatz lautet deshalb: **Die Qualität einer RAG-Anwendung beginnt nicht beim LLM, sondern bei den Daten und dem Retrieval-Prozess.**
+
+Wer diese Komponenten sauber strukturiert, schafft eine gute Grundlage für KI-Anwendungen, die sich sinnvoll in bestehende Unternehmenssysteme integrieren lassen.
+
+## Häufig gestellte Fragen zu Spring AI RAG
+
+### Was ist Spring AI RAG?
+
+Spring AI RAG bezeichnet die Implementierung von Retrieval Augmented Generation mit dem Spring-AI-Framework. Dabei werden externe Informationen mithilfe von Embeddings und einer Vektordatenbank gesucht und anschließend einem Sprachmodell als Kontext bereitgestellt. Spring AI bietet dafür unter anderem den `VectorStore`, den `ChatClient` und verschiedene RAG-Advisors.
+
+### Kann ich RAG mit Java und Spring Boot entwickeln?
+
+Ja. Mit Spring Boot und Spring AI kannst du eine vollständige RAG-Anwendung in Java implementieren. Spring AI stellt Schnittstellen für Sprachmodelle, Embeddings, Vektordatenbanken und Dokumentenverarbeitung bereit. Dadurch lassen sich RAG-Funktionen in bestehende Backend-Anwendungen integrieren.
+
+### Warum wird pgvector für RAG verwendet?
+
+pgvector erweitert PostgreSQL um die Speicherung und Suche von Vektoren. Dadurch können Embeddings direkt in einer PostgreSQL-Datenbank gespeichert und über Ähnlichkeitsabfragen durchsucht werden. Für Anwendungen, die bereits PostgreSQL verwenden, kann das die Infrastruktur vereinfachen.
+
+### Benötige ich für RAG mit Spring AI OpenAI?
+
+Nein. Spring AI unterstützt unterschiedliche Modellanbieter und lokale Modelle. Du kannst beispielsweise auch geeignete Modelle über Ollama einsetzen. Wichtig ist, dass sowohl ein Chat Model als auch ein passendes Embedding Model verfügbar sind.
+
+### Was ist der Unterschied zwischen RAG und Fine-Tuning?
+
+Bei RAG werden externe Informationen zur Laufzeit abgerufen und einem Sprachmodell als Kontext übergeben. Fine-Tuning verändert dagegen das Verhalten beziehungsweise die Parameter eines Modells durch zusätzliches Training. RAG eignet sich besonders, um Modelle mit aktuellen oder unternehmensinternen Informationen zu versorgen.
+
+### Ist Spring AI RAG für produktive Anwendungen geeignet?
+
+Spring AI bietet eine solide technische Grundlage für produktive RAG-Anwendungen. Allerdings benötigt eine professionelle Implementierung weitere Komponenten, etwa Authentifizierung, Berechtigungsprüfungen, Dokumentenverwaltung, Monitoring, Fehlerbehandlung und Qualitätstests. Die Eignung hängt daher von der gesamten Systemarchitektur und nicht allein vom verwendeten Framework ab.
+
+## Quellen und weiterführende Dokumentation
+
+Für die technischen Implementierungsdetails sind insbesondere die offiziellen Referenzen relevant:
+
+- [Spring AI: Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
+- [Spring AI: pgvector Vector Store](https://docs.spring.io/spring-ai/reference/api/vectordbs/pgvector.html)
+- [Spring AI: ETL Pipeline und Document Readers](https://docs.spring.io/spring-ai/reference/api/etl-pipeline.html)
+- [Spring AI: OpenAI Embeddings](https://docs.spring.io/spring-ai/reference/api/embeddings/openai-embeddings.html)
+
+**Technischer Hinweis:** Die Codebeispiele beziehen sich auf Spring AI 2.0.1 und Spring Boot 4.0.8. Sie wurden als zusammenhängendes Maven-Projekt kompiliert, und die Anwendung wurde gegen PostgreSQL 17 mit pgvector gestartet. Dabei legt Spring AI das beschriebene Schema samt HNSW-Index an.
+
+## KI-Funktionen in bestehende Java-Anwendungen integrieren
+
+Du möchtest interne Dokumente, Wissensdatenbanken oder Unternehmensdaten mithilfe von KI nutzbar machen?
+
+Ich unterstütze Unternehmen bei der Entwicklung moderner Backend-Anwendungen mit Java und Spring Boot. Von der technischen Konzeption über die Integration von Large Language Models bis zur Implementierung skalierbarer RAG-Architekturen.
+
+**[Lass uns gemeinsam über dein Projekt sprechen.](#contact)**
