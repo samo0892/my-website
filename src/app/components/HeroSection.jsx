@@ -1,74 +1,72 @@
 "use client";
 import React from "react";
 import Image from "next/image";
-import { TypeAnimation } from "react-type-animation";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { CheckIcon } from "@heroicons/react/24/outline";
+import { mailtoHref } from "../../lib/site";
+
+const PROMISES = [
+  "Festpreis-Angebot nach dem Erstgespräch",
+  "Der Code gehört dir",
+  "Remote oder vor Ort in Berlin",
+];
 
 const HeroSection = () => {
   return (
     <section className="lg:py-16">
-      <div className="grid grid-cols-1 sm:grid-cols-12">
+      {/* Zweispaltig erst ab lg: darunter ist die rechte Spalte schmaler als
+          der Avatar-Kreis, und der Kreis schiebt sich ueber den Text. */}
+      <div className="grid grid-cols-1 lg:grid-cols-12">
         <motion.div
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="col-span-8 place-self-center text-center sm:text-left justify-self-start"
+          className="lg:col-span-8 place-self-center text-center sm:text-left justify-self-start"
         >
-          <h1 className="text-white mb-4 text-4xl sm:text-5xl lg:text-8xl lg:leading-normal font-extrabold">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">
-            Hi, ich bin{" "}
-          </span>
-          <br />
-          {/* Die Animation startet erst im Browser, im statischen HTML stuende
-              im h1 sonst nur "Hi, ich bin". Crawler und Screenreader lesen
-              deshalb diesen festen Text, die Animation ist aria-hidden, damit
-              keine halb getippten Woerter vorgelesen werden. Bei Aenderungen
-              an der sequence mitziehen. Das Leerzeichen am Ende trennt den
-              Text vom getippten Wort, wenn Google die Seite mit JS rendert. */}
-          <span className="sr-only">
-            Sam – Java-Entwickler, Backend-Architekt und KI-Integrator{" "}
-          </span>
-          <TypeAnimation
-            aria-hidden="true"
-            sequence={[
-              "Sam",
-              1000,
-              "Java-Entwickler",
-              1000,
-              "Backend-Architekt",
-              1000,
-              "KI-Integrator",
-              1000,
-            ]}
-            wrapper="span"
-            speed={50}
-            repeat={Infinity}
-          />
-        </h1>
-        <p className="text-[#ADB7BE] text-base sm:text-lg mb-6 lg:text-xl">
-            Seit über sechs Jahren entwickle ich Backend-Systeme mit Java – von Jakarta-EE-Anwendungen
-            bis zu Services mit Spring Boot und Quarkus. Aktuell verbinde ich das mit KI:
-            Large Language Models dort nutzbar machen, wo gewachsene Fachlogik und
-            Enterprise-Anforderungen längst bestehen.
-        </p>
-        <div>
-          <Link
-            href="/#contact"
-            className="px-6 inline-block py-3 w-full sm:w-fit rounded-full mr-4 bg-gradient-to-br from-green-500 to-emerald-500 hover:bg-green-600 text-white"
-          >
-            Kontakt
-          </Link>
-        </div>
-
+          <p className="text-xl sm:text-2xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">
+            Hi, ich bin Sam.
+          </p>
+          <h1 className="text-white mb-6 text-3xl sm:text-4xl lg:text-5xl leading-tight font-extrabold">
+            Software schneller bauen – mit KI und ohne Abstriche bei der
+            Qualität.
+          </h1>
+          <p className="text-[#ADB7BE] text-base sm:text-lg mb-8 lg:text-xl">
+            Ich bin Backend-Entwickler mit über sechs Jahren Erfahrung in Java,
+            Spring Boot und Quarkus. Ich entwickle MVPs und komplette
+            Anwendungen mit KI-Agenten wie Claude Code, bringe LLMs in
+            bestehende Systeme und zeige Teams, wie sie selbst schneller werden.
+          </p>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
+            <a
+              href={mailtoHref("Erstgespräch über sam.codes")}
+              className="px-6 py-3 w-full sm:w-fit rounded-full bg-gradient-to-br from-green-500 to-emerald-500 hover:bg-green-600 text-white text-center"
+            >
+              Kostenloses Erstgespräch (30 Min)
+            </a>
+            <Link
+              href="/#leistungen"
+              className="px-6 py-3 w-full sm:w-fit rounded-full border border-[#33353F] text-[#ADB7BE] hover:text-white hover:border-white transition text-center"
+            >
+              Leistungen ansehen
+            </Link>
+          </div>
+          <ul className="mt-6 flex flex-col items-center sm:flex-row sm:flex-wrap gap-x-6 gap-y-2 text-sm text-[#ADB7BE]">
+            {PROMISES.map((promise) => (
+              <li key={promise} className="flex items-center gap-2">
+                <CheckIcon className="h-4 w-4 shrink-0 text-emerald-400" />
+                {promise}
+              </li>
+            ))}
+          </ul>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="col-span-4 place-self-center mt-4 lg:mt-0"
+          className="lg:col-span-4 place-self-center mt-8 lg:mt-0"
         >
-          <div className="rounded-full bg-[#181818] w-[250px] h-[250px] lg:w-[400px] lg:h-[400px] relative">
+          <div className="rounded-full bg-[#181818] w-[250px] h-[250px] lg:w-[300px] lg:h-[300px] xl:w-[400px] xl:h-[400px] relative">
             <Image
               src="/images/sam-codes.png"
               alt="Samed Baldede"

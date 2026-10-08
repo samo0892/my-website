@@ -1,9 +1,8 @@
-import Image from "next/image";
-import Link from "next/link";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import EmailSection from "../components/EmailSection";
-import { getAllPosts, formatDate } from "../../lib/blog";
+import PostCard from "../components/PostCard";
+import { getAllPosts } from "../../lib/blog";
 import { pageMetadata } from "../../lib/site";
 
 export const metadata = pageMetadata({
@@ -37,33 +36,7 @@ export default function BlogPage() {
             <ul className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
               {posts.map((post) => (
                 <li key={post.slug}>
-                  <Link
-                    href={`/blog/${post.slug}`}
-                    className="group block h-full rounded-xl bg-[#181818] overflow-hidden hover:ring-1 hover:ring-emerald-500/50 transition"
-                  >
-                    {(post.ogImage ?? post.image) && (
-                      <Image
-                        src={post.ogImage ?? post.image}
-                        alt={post.title}
-                        width={600}
-                        height={340}
-                        className="aspect-[1200/630] w-full object-cover"
-                      />
-                    )}
-                    <div className="p-5">
-                      <p className="text-xs text-slate-500 mb-2">
-                        <time dateTime={post.date}>{formatDate(post.date)}</time>
-                        {" · "}
-                        {post.readingTime} Min.
-                      </p>
-                      <h2 className="text-lg font-semibold text-white mb-2 group-hover:text-emerald-400 transition">
-                        {post.title}
-                      </h2>
-                      <p className="text-[#ADB7BE] text-sm">
-                        {post.description}
-                      </p>
-                    </div>
-                  </Link>
+                  <PostCard post={post} />
                 </li>
               ))}
             </ul>

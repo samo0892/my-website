@@ -1,5 +1,9 @@
 export const SITE_URL = "https://www.sam-codes.com";
 export const SITE_NAME = "sam.codes";
+export const CONTACT_EMAIL = "hi@sam-codes.com";
+
+export const mailtoHref = (subject) =>
+  `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`;
 
 // Next uebernimmt openGraph pro Seite nur als Ganzes: Setzt eine Unterseite
 // eigene Werte, fehlt alles, was nur im Root-Layout stand. Ohne eigenes

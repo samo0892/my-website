@@ -39,8 +39,6 @@ const TAB_DATA = [
     content: (
       <ul className="list-disc pl-2">
         <li>Scrum Master</li>
-        <li>Shopify Development Fundamentals</li>
-        <li>Headless at Shopify for Developers</li>
       </ul>
     ),
   },

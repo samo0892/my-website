@@ -5,26 +5,23 @@ import NavLink from "./NavLink";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/solid";
 import MenuOverlay from "./MenuOverlay";
 
+// Zur Startseite fuehrt das Logo, deshalb kein eigener Home-Link.
 const navLinks = [
   {
-    title: "Home",
-    path: "/",
+    title: "Leistungen",
+    path: "/#leistungen",
   },
   {
     title: "Über mich",
     path: "/#about",
   },
   {
-    title: "Projekte",
-    path: "/#projects",
+    title: "Blog",
+    path: "/blog",
   },
   {
     title: "Kontakt",
     path: "/#contact",
-  },
-  {
-    title: "Blog",
-    path: "/blog"
   },
 ];
 
