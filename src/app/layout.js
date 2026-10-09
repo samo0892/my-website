@@ -4,11 +4,13 @@ import { SITE_URL, SITE_NAME, FEED_ALTERNATE, siteOpenGraph } from '../lib/site'
 
 const inter = Inter({ subsets: ['latin'] })
 
-const SITE_TITLE = 'sam.codes – Java-Backend und KI'
+// Rolle und Ort vorne, damit der Titel zu Suchen wie "Java Freelancer
+// Berlin" passt. Wird er in den Ergebnissen gekuerzt, faellt die Marke weg.
+const SITE_TITLE = 'Java-Entwickler Berlin (Freelance): Spring Boot & KI | sam.codes'
+// Hoechstens ~155 Zeichen, sonst kuerzt Google die Beschreibung.
 const SITE_DESCRIPTION =
-  'Samed Baldede entwickelt Backend-Systeme mit Java – Spring Boot, Quarkus, ' +
-  'Jakarta EE – und beschäftigt sich mit der Integration von LLMs in ' +
-  'bestehende Enterprise-Anwendungen.'
+  'Freelance Java-Backend-Entwickler in Berlin: MVPs zum Festpreis, ' +
+  'LLM-Integration mit Spring AI und Workshops für KI-gestützte Entwicklung.'
 
 export const metadata = {
   metadataBase: new URL(SITE_URL),

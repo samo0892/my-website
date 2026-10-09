@@ -6,7 +6,7 @@ import { getAllPosts } from "../../lib/blog";
 import { pageMetadata } from "../../lib/site";
 
 export const metadata = pageMetadata({
-  title: "Blog",
+  title: "Java & KI Blog: Spring AI, LLM-Integration, RAG",
   description:
     "Artikel zu Java-Backend-Entwicklung, Spring Boot, Quarkus und der Integration von LLMs in bestehende Systeme.",
   path: "/blog",
@@ -21,7 +21,7 @@ export default function BlogPage() {
       <div className="container mt-24 mx-auto px-6 md:px-12 py-4">
         <section className="mt-12">
           <h1 className="text-center text-4xl font-bold text-white mb-4">
-            Blog
+            Java &amp; KI Blog
           </h1>
           <p className="text-center text-[#ADB7BE] max-w-2xl mx-auto mb-12">
             Notizen zu Java-Backend-Entwicklung und dem Einsatz von KI in

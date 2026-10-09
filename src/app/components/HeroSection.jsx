@@ -23,7 +23,7 @@ const HeroSection = () => {
           className="lg:col-span-8 place-self-center text-center sm:text-left justify-self-start"
         >
           <p className="text-xl sm:text-2xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">
-            Hi, ich bin Sam.
+            Freelance Java-Backend-Entwickler in Berlin
           </p>
           <h1 className="text-white mb-6 text-3xl sm:text-4xl lg:text-5xl leading-tight font-extrabold">
             Software schneller bauen – mit KI und ohne Abstriche bei der

@@ -62,6 +62,10 @@ def check_page(url, tags):
     if not feeds:
         errors.append("RSS-Link (alternate) fehlt")
 
+    descriptions = [a.get("content") or "" for t, a in tags if t == "meta" and a.get("name") == "description"]
+    if len(descriptions) != 1 or not 50 <= len(descriptions[0]) <= 160:
+        errors.append(f"meta description fehlt oder Laenge ausserhalb 50-160: {[len(d) for d in descriptions]}")
+
     if meta(tags, "og:image:width") != ["1200"] or meta(tags, "og:image:height") != ["630"]:
         errors.append(
             f"og:image nicht 1200x630: {meta(tags, 'og:image:width')}x{meta(tags, 'og:image:height')}"
