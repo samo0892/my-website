@@ -75,6 +75,10 @@ jobs:
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
       - name: Build with Next.js
         run: ${{ steps.detect-package-manager.outputs.runner }} next build
+      # Bricht den Deploy ab, wenn ein Punkt aus dem SEO-Audit wieder kaputt
+      # ist (canonical, OG-Bild, versteckter Hero, Buchungslinks ...).
+      - name: Check SEO basics
+        run: python3 scripts/check-seo.py
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
