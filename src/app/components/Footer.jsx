@@ -18,13 +18,13 @@ const Footer = () => {
         <div className="flex flex-row gap-4">
           <Link
             href="/impressum"
-            className="text-sm text-slate-400 hover:text-white transition"
+            className="inline-block py-1 text-sm text-slate-400 hover:text-white transition"
           >
             Impressum
           </Link>
           <Link
             href="/datenschutz"
-            className="text-sm text-slate-400 hover:text-white transition"
+            className="inline-block py-1 text-sm text-slate-400 hover:text-white transition"
           >
             Datenschutz
           </Link>

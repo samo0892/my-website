@@ -35,25 +35,29 @@ const Navbar = () => {
           href={"/"}
           className="text-2xl md:text-5xl text-white font-semibold"
         >
-                            <img src="/images/sam-codes-logo.svg" alt="sam.codes Logo" width="200" height="40" />
+          <img
+            src="/images/sam-codes-logo.svg"
+            alt="sam.codes – zur Startseite"
+            width="200"
+            height="40"
+          />
         </Link>
 
         <div className="mobile-menu block md:hidden">
-          {!navbarOpen ? (
-            <button
-              onClick={() => setNavbarOpen(true)}
-              className="flex items-center px-3 py-2 border rounded border-slate-200 text-slate-200 hover:text-white hover:border-white"
-            >
-              <Bars3Icon className="h-5 w-5" />
-            </button>
-          ) : (
-            <button
-              onClick={() => setNavbarOpen(false)}
-              className="flex items-center px-3 py-2 border rounded border-slate-200 text-slate-200 hover:text-white hover:border-white"
-            >
+          <button
+            type="button"
+            onClick={() => setNavbarOpen(!navbarOpen)}
+            aria-expanded={navbarOpen}
+            aria-controls="mobile-menu"
+            aria-label={navbarOpen ? "Menü schließen" : "Menü öffnen"}
+            className="flex items-center px-3 py-2 border rounded border-slate-200 text-slate-200 hover:text-white hover:border-white"
+          >
+            {navbarOpen ? (
               <XMarkIcon className="h-5 w-5" />
-            </button>
-          )}
+            ) : (
+              <Bars3Icon className="h-5 w-5" />
+            )}
+          </button>
         </div>
         <div className="menu hidden md:block md:w-auto" id="navbar">
           <ul className="flex p-4 md:p-0 md:flex-row md:space-x-8 mt-0">
@@ -66,13 +70,14 @@ const Navbar = () => {
         </div>
       </div>
       {/* Anker wie /#about wechseln die Seite nicht, die Navbar bleibt also
-          gemountet. Ohne explizites Schliessen bliebe das Menue offen. */}
-      {navbarOpen ? (
-        <MenuOverlay
-          links={navLinks}
-          onLinkClick={() => setNavbarOpen(false)}
-        />
-      ) : null}
+          gemountet. Ohne explizites Schliessen bliebe das Menue offen.
+          Das Menue steht immer im DOM, damit aria-controls ein Ziel hat. */}
+      <MenuOverlay
+        id="mobile-menu"
+        open={navbarOpen}
+        links={navLinks}
+        onLinkClick={() => setNavbarOpen(false)}
+      />
     </nav>
   );
 };

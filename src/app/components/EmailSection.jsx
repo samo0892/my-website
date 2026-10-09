@@ -24,10 +24,10 @@ const EmailSection = ({ utmContent = "kontakt" }) => {
         </p>
         <div className="socials flex flex-row gap-2">
           <Link href="https://github.com/samo0892/">
-            <Image src={GithubIcon} alt="Github Icon" />
+            <Image src={GithubIcon} alt="GitHub-Profil von Samed Baldede" />
           </Link>
           <Link href="https://de.linkedin.com/in/samed-baldede">
-            <Image src={LinkedinIcon} alt="Linkedin Icon" />
+            <Image src={LinkedinIcon} alt="LinkedIn-Profil von Samed Baldede" />
           </Link>
         </div>
       </div>
@@ -39,12 +39,13 @@ const EmailSection = ({ utmContent = "kontakt" }) => {
           className="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2.5 px-5 rounded-lg w-full sm:w-fit text-center transition"
         >
           Erstgespräch buchen
+          <span className="sr-only"> (öffnet in neuem Tab)</span>
         </a>
         <p className="text-[#ADB7BE] text-sm mt-4">
           Oder direkt an{" "}
           <a
             href={mailtoHref("Anfrage über sam.codes")}
-            className="text-emerald-400 hover:text-emerald-300 underline"
+            className="inline-block py-1 text-emerald-400 hover:text-emerald-300 underline"
           >
             {CONTACT_EMAIL}
           </a>
