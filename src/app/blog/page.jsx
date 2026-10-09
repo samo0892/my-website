@@ -34,9 +34,9 @@ export default function BlogPage() {
             </p>
           ) : (
             <ul className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
-              {posts.map((post) => (
+              {posts.map((post, index) => (
                 <li key={post.slug}>
-                  <PostCard post={post} />
+                  <PostCard post={post} priority={index === 0} />
                 </li>
               ))}
             </ul>

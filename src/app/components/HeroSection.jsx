@@ -1,7 +1,5 @@
-"use client";
 import React from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
 import Link from "next/link";
 import { CheckIcon } from "@heroicons/react/24/outline";
 import { bookingUrl } from "../../lib/site";
@@ -18,10 +16,10 @@ const HeroSection = () => {
       {/* Zweispaltig erst ab lg: darunter ist die rechte Spalte schmaler als
           der Avatar-Kreis, und der Kreis schiebt sich ueber den Text. */}
       <div className="grid grid-cols-1 lg:grid-cols-12">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
+        {/* Bewusst ohne Einblend-Animation: Text und Bild sind das LCP-Element
+            und sollen mit dem ersten Paint sichtbar sein, nicht erst nach
+            dem Laden des JavaScripts. */}
+        <div
           className="lg:col-span-8 place-self-center text-center sm:text-left justify-self-start"
         >
           <p className="text-xl sm:text-2xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">
@@ -61,23 +59,19 @@ const HeroSection = () => {
               </li>
             ))}
           </ul>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="lg:col-span-4 place-self-center mt-8 lg:mt-0"
-        >
+        </div>
+        <div className="lg:col-span-4 place-self-center mt-8 lg:mt-0">
           <div className="rounded-full bg-[#181818] w-[250px] h-[250px] lg:w-[300px] lg:h-[300px] xl:w-[400px] xl:h-[400px] relative">
             <Image
-              src="/images/sam-codes.png"
+              src="/images/sam-codes.webp"
               alt="Samed Baldede"
               className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
               width={300}
               height={300}
+              priority
             />
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

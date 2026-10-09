@@ -4,10 +4,11 @@ import { formatDate } from "../../lib/blog";
 
 // Artikelkarte fuer die Blog-Uebersicht und die Startseite. headingLevel
 // passt die Ueberschrift an die Seite an: unter dem h1 "Blog" ein h2, unter
-// dem h2 des Blog-Abschnitts auf der Startseite ein h3.
-const PostCard = ({ post, headingLevel = "h2" }) => {
+// dem h2 des Blog-Abschnitts auf der Startseite ein h3. priority bekommt
+// nur die erste Karte auf /blog: Ihr Bild ist dort das LCP-Element.
+const PostCard = ({ post, headingLevel = "h2", priority = false }) => {
   const Heading = headingLevel;
-  const image = post.ogImage ?? post.image;
+  const image = post.thumbnail;
 
   return (
     <Link
@@ -18,9 +19,10 @@ const PostCard = ({ post, headingLevel = "h2" }) => {
         <Image
           src={image}
           alt={post.title}
-          width={600}
-          height={340}
+          width={640}
+          height={336}
           className="aspect-[1200/630] w-full object-cover"
+          priority={priority}
         />
       )}
       <div className="p-5">

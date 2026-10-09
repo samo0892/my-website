@@ -3,6 +3,15 @@ import path from "path";
 import matter from "gray-matter";
 
 const POSTS_DIR = path.join(process.cwd(), "content", "blog");
+const PUBLIC_DIR = path.join(process.cwd(), "public");
+
+// Kleines WebP neben der Titelkarte, erzeugt von scripts/make-og-card.sh.
+// Fehlt es, zeigen die Karten die volle PNG.
+const thumbnailFor = (image) => {
+  if (!image) return null;
+  const thumbnail = image.replace(/\.png$/, "-640.webp");
+  return fs.existsSync(path.join(PUBLIC_DIR, thumbnail)) ? thumbnail : image;
+};
 
 const readingTime = (content) => {
   const words = content.trim().split(/\s+/).length;
@@ -28,6 +37,7 @@ const readPost = (fileName) => {
     // Uebersicht, ohne im Artikel selbst den Titel zu doppeln.
     image: data.image ?? null,
     ogImage: data.ogImage ?? null,
+    thumbnail: thumbnailFor(data.ogImage ?? data.image),
     tags: data.tags ?? [],
     readingTime: readingTime(content),
   };

@@ -1,7 +1,5 @@
-"use client";
 import React from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import LegalSection from "./LegalSection";
 
 const UST_ID = "DE348179706";
@@ -10,21 +8,13 @@ const Impressum = () => {
   return (
     <section className="min-h-screen bg-[#121212] text-white px-6 py-16 lg:py-24">
       <div className="max-w-4xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+        <h1
           className="text-4xl sm:text-5xl font-extrabold mb-10 text-center bg-gradient-to-r from-green-400 to-emerald-600 text-transparent bg-clip-text"
         >
           Impressum
-        </motion.h1>
+        </h1>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-[#ADB7BE] text-base sm:text-lg space-y-10"
-        >
+        <div className="text-[#ADB7BE] text-base sm:text-lg space-y-10">
           <LegalSection title="Angaben gemäß § 5 DDG">
             <p>
               Samed Baldede
@@ -148,7 +138,7 @@ const Impressum = () => {
               Rechtsverletzungen werde ich derartige Inhalte umgehend entfernen.
             </p>
           </LegalSection>
-        </motion.div>
+        </div>
 
         <div className="mt-12 text-center">
           <Link

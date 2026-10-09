@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Erzeugt eine 1200x630 Titelkarte im Seitenstil.
+# Erzeugt eine 1200x630 Titelkarte im Seitenstil, dazu ein 640 px breites
+# WebP-Vorschaubild fuer die Artikelkarten (scripts/make-webp.sh).
 #
 #   scripts/make-og-card.sh "Artikeltitel" public/images/og/<slug>.png ["Kicker"]
 #
@@ -39,3 +40,9 @@ mkdir -p "$(dirname "$OUT")"
 mv "$TMP/card.png" "$OUT"
 rmdir "$TMP" 2>/dev/null || true
 echo "geschrieben: $OUT"
+
+# Vorschaubild fuer die Artikelkarten: Die Karten sind hoechstens ~600 px
+# breit, die 1200er-PNG waere dort unnoetig schwer. lib/blog.js nimmt die
+# WebP-Datei, sobald es sie gibt, sonst die PNG.
+"$ROOT/scripts/make-webp.sh" "$OUT" "${OUT%.png}-640.webp" 640 \
+  || echo "Hinweis: Vorschaubild nicht erzeugt, die Karten nutzen die PNG." >&2
