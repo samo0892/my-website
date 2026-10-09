@@ -6,6 +6,16 @@ import AboutSection from "./components/AboutSection";
 import BlogSection from "./components/BlogSection";
 import EmailSection from "./components/EmailSection";
 import Footer from "./components/Footer";
+import { FEED_ALTERNATE } from "../lib/site";
+
+// Titel, Beschreibung und openGraph kommen aus dem Root-Layout. alternates
+// ersetzt Next als Ganzes, deshalb steht der RSS-Link hier noch einmal.
+export const metadata = {
+  alternates: {
+    canonical: "/",
+    types: FEED_ALTERNATE,
+  },
+};
 
 export default function Home() {
   return (
@@ -17,7 +27,7 @@ export default function Home() {
         <ApproachSection />
         <AboutSection />
         <BlogSection />
-        <EmailSection />
+        <EmailSection utmContent="home-kontakt" />
       </div>
       <Footer />
     </main>

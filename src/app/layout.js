@@ -1,6 +1,6 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
-import { SITE_URL, SITE_NAME, siteOpenGraph } from '../lib/site'
+import { SITE_URL, SITE_NAME, FEED_ALTERNATE, siteOpenGraph } from '../lib/site'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,10 +19,10 @@ export const metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
+  // Kein canonical hier: Den erbten sonst alle Seiten ohne eigene
+  // alternates, etwa die 404-Seite. Die Startseite setzt ihn in page.js.
   alternates: {
-    types: {
-      'application/rss+xml': `${SITE_URL}/feed.xml`,
-    },
+    types: FEED_ALTERNATE,
   },
   openGraph: siteOpenGraph({
     title: SITE_TITLE,

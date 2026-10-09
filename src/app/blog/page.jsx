@@ -43,7 +43,7 @@ export default function BlogPage() {
           )}
         </section>
 
-        <EmailSection />
+        <EmailSection utmContent="blog-kontakt" />
       </div>
       <Footer />
     </main>

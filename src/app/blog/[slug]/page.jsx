@@ -9,6 +9,11 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import EmailSection from "../../components/EmailSection";
 import { getAllPosts, getPost, formatDate } from "../../../lib/blog";
+import {
+  SITE_NAME,
+  FEED_ALTERNATE,
+  DEFAULT_OG_IMAGE,
+} from "../../../lib/site";
 
 export const generateStaticParams = () =>
   getAllPosts().map((post) => ({ slug: post.slug }));
@@ -17,7 +22,8 @@ export function generateMetadata({ params }) {
   const post = getPost(params.slug);
   if (!post) return {};
 
-  const socialImage = post.ogImage ?? post.image ?? "/images/sam-codes.png";
+  // Titelkarten und Hero-Bilder sind 1200x630, ebenso das Standardbild.
+  const socialImage = post.ogImage ?? post.image ?? DEFAULT_OG_IMAGE.url;
 
   return {
     // absolute statt Template: metaTitle ist schon auf die Laenge in
@@ -27,16 +33,17 @@ export function generateMetadata({ params }) {
     keywords: post.keywords.length ? post.keywords : undefined,
     alternates: {
       canonical: `/blog/${post.slug}`,
+      types: FEED_ALTERNATE,
     },
     openGraph: {
       title: post.title,
       description: post.description,
       url: `/blog/${post.slug}`,
-      siteName: "sam.codes",
+      siteName: SITE_NAME,
       locale: "de_DE",
       type: "article",
       publishedTime: post.date,
-      images: [{ url: socialImage, alt: post.title }],
+      images: [{ url: socialImage, width: 1200, height: 630, alt: post.title }],
     },
     // Muss der Artikel selbst setzen: Next mischt die twitter-Angaben des
     // Root-Layouts nicht in die Metadaten einer Unterseite.
@@ -112,7 +119,7 @@ export default function BlogPost({ params }) {
           </div>
         </article>
 
-        <EmailSection />
+        <EmailSection utmContent={`post-${post.slug}`} />
       </div>
       <Footer />
     </main>

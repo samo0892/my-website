@@ -3,9 +3,10 @@ import GithubIcon from "../../../public/github-icon.svg";
 import LinkedinIcon from "../../../public/linkedin-icon.svg";
 import Link from "next/link";
 import Image from "next/image";
-import { BOOKING_URL, CONTACT_EMAIL, mailtoHref } from "../../lib/site";
+import { bookingUrl, CONTACT_EMAIL, mailtoHref } from "../../lib/site";
 
-const EmailSection = () => {
+// utmContent ordnet Buchungen der Seite zu, auf der der Abschnitt steht.
+const EmailSection = ({ utmContent = "kontakt" }) => {
   return (
     <section
       id="contact"
@@ -32,7 +33,7 @@ const EmailSection = () => {
       </div>
       <div className="z-10 flex flex-col justify-center items-start">
         <a
-          href={BOOKING_URL}
+          href={bookingUrl(utmContent)}
           target="_blank"
           rel="noopener noreferrer"
           className="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2.5 px-5 rounded-lg w-full sm:w-fit text-center transition"
