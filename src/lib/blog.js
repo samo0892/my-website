@@ -52,6 +52,10 @@ const readPost = (fileName) => {
     ogImage: data.ogImage ?? null,
     thumbnail: thumbnailFor(data.ogImage ?? data.image),
     tags: data.tags ?? [],
+    // Slug einer Leistung aus lib/services.js. Der Artikel endet dann mit
+    // einem Hinweis auf diese Leistung, serviceText ersetzt deren Teaser.
+    service: data.service ?? null,
+    serviceText: data.serviceText ?? null,
     readingTime: readingTime(content),
   };
 };

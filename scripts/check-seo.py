@@ -22,6 +22,10 @@ AUTHOR = "Samed Baldede"
 BOOKING_HOST = "calendly.com"
 
 
+BLOCK_TAGS = {"p", "div", "ul", "ol", "dl", "aside", "section", "table", "pre",
+              "h1", "h2", "h3", "h4", "h5", "h6", "figure", "blockquote"}
+
+
 class Tags(HTMLParser):
     """Sammelt alle Start-Tags als (name, attrs) in Dokumentreihenfolge, den
     sichtbaren Text und den Inhalt der JSON-LD-Bloecke. Sonstiger Text in
@@ -35,10 +39,18 @@ class Tags(HTMLParser):
         self.jsonld = []
         self._skip = 0
         self._in_jsonld = False
+        self._p_depth = 0
+        self.nested_in_p = []
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         self.tags.append((tag, attrs))
+        # Ein Block-Element im <p> schliesst der Browser vorher, React sieht
+        # dann ein anderes DOM als gerendert und die Hydrierung scheitert.
+        if self._p_depth and tag in BLOCK_TAGS:
+            self.nested_in_p.append(tag)
+        if tag == "p":
+            self._p_depth += 1
         if tag in ("script", "style"):
             self._skip += 1
             if attrs.get("type") == "application/ld+json":
@@ -46,6 +58,8 @@ class Tags(HTMLParser):
                 self.jsonld.append("")
 
     def handle_endtag(self, tag):
+        if tag == "p" and self._p_depth:
+            self._p_depth -= 1
         if tag in ("script", "style") and self._skip:
             self._skip -= 1
             self._in_jsonld = False
@@ -63,6 +77,7 @@ def parse(path):
         parser.feed(f.read())
     parser.tags.append(("#text", {"value": " ".join(parser.text)}))
     parser.tags.append(("#jsonld", {"value": parser.jsonld}))
+    parser.tags.append(("#nested", {"value": parser.nested_in_p}))
     return parser.tags
 
 
@@ -148,6 +163,10 @@ def check_page(url, tags):
         if tag == "img" and "alt" not in attrs:
             errors.append(f"<img src={attrs.get('src')}> ohne alt-Attribut")
 
+    nested = next(a["value"] for t, a in tags if t == "#nested")
+    if nested:
+        errors.append(f"Block-Element im <p> (Hydrierungsfehler): {sorted(set(nested))}")
+
     # Entwuerfe markieren fehlenden Inhalt mit <Platzhalter>. Der darf nie
     # live gehen.
     if any("data-platzhalter" in attrs for _, attrs in tags):
@@ -200,6 +219,9 @@ def check_post(url, tags):
         image = article.get("image", {}).get("url", "")
         if not image.startswith(SITE_URL):
             errors.append(f"BlogPosting.image nicht absolut: {image}")
+    # Jeder Artikel fuehrt auf mindestens eine Leistungsseite (Audit 3.3).
+    if not any(t == "a" and (a.get("href") or "").startswith("/leistungen/") for t, a in tags):
+        errors.append("kein Link auf eine Leistungsseite")
     byline = [a for t, a in tags if t == "a" and a.get("rel") == "author"]
     if not byline:
         errors.append("Byline (Link mit rel=author) fehlt")

@@ -9,6 +9,7 @@ import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import EmailSection from "../../components/EmailSection";
 import JsonLd from "../../components/JsonLd";
+import ServiceCta from "../../components/ServiceCta";
 import {
   getAllPosts,
   getPost,
@@ -70,6 +71,9 @@ export function generateMetadata({ params }) {
 // also kein Highlighter-JS im Bundle. keepBackground: false laesst den
 // Codeblock-Hintergrund aus globals.css stehen, statt den des Themes zu
 // uebernehmen; gefaerbt werden nur die Tokens.
+// Komponenten, die die MDX-Artikel verwenden duerfen.
+const mdxComponents = { ServiceCta };
+
 const prettyCodeOptions = {
   theme: "one-dark-pro",
   keepBackground: false,
@@ -142,6 +146,7 @@ export default function BlogPost({ params }) {
           <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-a:text-emerald-400">
             <MDXRemote
               source={post.content}
+              components={mdxComponents}
               options={{
                 mdxOptions: {
                   remarkPlugins: [remarkGfm],
@@ -153,6 +158,10 @@ export default function BlogPost({ params }) {
               }}
             />
           </div>
+
+          {post.service && (
+            <ServiceCta slug={post.service}>{post.serviceText}</ServiceCta>
+          )}
         </article>
 
         <EmailSection utmContent={`post-${post.slug}`} />
