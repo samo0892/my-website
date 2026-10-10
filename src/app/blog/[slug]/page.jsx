@@ -11,6 +11,7 @@ import EmailSection from "../../components/EmailSection";
 import { getAllPosts, getPost, formatDate } from "../../../lib/blog";
 import {
   SITE_NAME,
+  AUTHOR,
   FEED_ALTERNATE,
   DEFAULT_OG_IMAGE,
 } from "../../../lib/site";
@@ -31,6 +32,7 @@ export function generateMetadata({ params }) {
     title: { absolute: post.metaTitle },
     description: post.description,
     keywords: post.keywords.length ? post.keywords : undefined,
+    authors: [{ name: AUTHOR.name, url: AUTHOR.url }],
     alternates: {
       canonical: `/blog/${post.slug}`,
       types: FEED_ALTERNATE,
@@ -43,6 +45,8 @@ export function generateMetadata({ params }) {
       locale: "de_DE",
       type: "article",
       publishedTime: post.date,
+      modifiedTime: post.updated ?? post.date,
+      authors: [AUTHOR.url],
       images: [{ url: socialImage, width: 1200, height: 630, alt: post.title }],
     },
     // Muss der Artikel selbst setzen: Next mischt die twitter-Angaben des
@@ -85,11 +89,36 @@ export default function BlogPost({ params }) {
               {post.title}
             </h1>
             <p className="text-[#ADB7BE] text-lg">{post.description}</p>
+            {/* Byline: Der Autor muss im sichtbaren Text stehen, nicht nur
+                in den Metadaten, damit Leser und Suchmaschinen ihn sehen. */}
             <p className="text-sm text-slate-500 mt-4">
+              Von{" "}
+              <Link
+                href="/#about"
+                rel="author"
+                className="text-[#ADB7BE] hover:text-white transition"
+              >
+                {AUTHOR.name}
+              </Link>
+              {" · "}
               <time dateTime={post.date}>{formatDate(post.date)}</time>
+              {post.updated && (
+                <>
+                  {" · aktualisiert am "}
+                  <time dateTime={post.updated}>
+                    {formatDate(post.updated)}
+                  </time>
+                </>
+              )}
               {" · "}
               {post.readingTime} Min. Lesezeit
             </p>
+            {post.testedWith.length > 0 && (
+              <p className="mt-6 rounded-lg border border-[#33353F] bg-[#181818] px-4 py-3 text-sm text-[#ADB7BE]">
+                <span className="font-semibold text-white">Getestet mit:</span>{" "}
+                {post.testedWith.join(" · ")}
+              </p>
+            )}
           </header>
 
           {post.image && (

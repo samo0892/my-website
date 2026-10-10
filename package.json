@@ -13,7 +13,6 @@
     "autoprefixer": "10.4.15",
     "eslint": "8.47.0",
     "eslint-config-next": "13.4.15",
-    "framer-motion": "^10.16.1",
     "gray-matter": "^4.0.3",
     "next": "13.4.15",
     "next-mdx-remote": "^6.0.0",

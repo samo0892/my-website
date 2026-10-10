@@ -13,6 +13,11 @@ const thumbnailFor = (image) => {
   return fs.existsSync(path.join(PUBLIC_DIR, thumbnail)) ? thumbnail : image;
 };
 
+// Unquotierte Datumsangaben im Frontmatter (updated: 2026-10-10) liest
+// gray-matter als Date. Alles Weitere erwartet "YYYY-MM-DD".
+const isoDate = (value) =>
+  value instanceof Date ? value.toISOString().slice(0, 10) : value ?? null;
+
 const readingTime = (content) => {
   const words = content.trim().split(/\s+/).length;
   return Math.max(1, Math.round(words / 200));
@@ -32,7 +37,14 @@ const readPost = (fileName) => {
     metaTitle: data.metaTitle ?? data.title,
     description: data.description ?? "",
     keywords: data.keywords ?? [],
-    date: data.date,
+    date: isoDate(data.date),
+    // Nur bei inhaltlichen Aenderungen setzen, nicht fuer Tippfehler: Das
+    // Datum steht sichtbar im Artikel, in og:modified_time und als lastmod
+    // in der Sitemap.
+    updated: isoDate(data.updated),
+    // Versionen, mit denen der Code des Artikels zuletzt gelaufen ist,
+    // z. B. ["Spring AI 2.0.1", "Spring Boot 4.0.8"]. Steht oben im Artikel.
+    testedWith: data.testedWith ?? [],
     // image: Hero-Bild im Artikel. ogImage: Titelkarte fuer Social und
     // Uebersicht, ohne im Artikel selbst den Titel zu doppeln.
     image: data.image ?? null,

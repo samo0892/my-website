@@ -17,25 +17,45 @@ from urllib.parse import urlparse
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "out")
 SITE_URL = "https://www.sam-codes.com"
+AUTHOR = "Samed Baldede"
 BOOKING_HOST = "calendly.com"
 
 
 class Tags(HTMLParser):
-    """Sammelt alle Start-Tags als (name, attrs) in Dokumentreihenfolge."""
+    """Sammelt alle Start-Tags als (name, attrs) in Dokumentreihenfolge und
+    den sichtbaren Text. Text in <script> zaehlt nicht: Dort steht die
+    RSC-Payload, die Suchmaschinen nicht als Seiteninhalt werten."""
 
     def __init__(self):
         super().__init__()
         self.tags = []
+        self.text = []
+        self._skip = 0
 
     def handle_starttag(self, tag, attrs):
         self.tags.append((tag, dict(attrs)))
+        if tag in ("script", "style"):
+            self._skip += 1
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style") and self._skip:
+            self._skip -= 1
+
+    def handle_data(self, data):
+        if not self._skip:
+            self.text.append(data)
 
 
 def parse(path):
     parser = Tags()
     with open(path, encoding="utf-8") as f:
         parser.feed(f.read())
+    parser.tags.append(("#text", {"value": " ".join(parser.text)}))
     return parser.tags
+
+
+def visible_text(tags):
+    return next(a["value"] for t, a in tags if t == "#text")
 
 
 def file_for(url):
@@ -78,9 +98,10 @@ def check_page(url, tags):
             errors.append(f"<{tag}> mit opacity:0 im ausgelieferten HTML")
             break
 
+    # alt="" ist fuer dekorative Bilder richtig, nur ein fehlendes alt nicht.
     for tag, attrs in tags:
-        if tag == "img" and not attrs.get("alt", "").strip():
-            errors.append(f"<img src={attrs.get('src')}> ohne alt-Text")
+        if tag == "img" and "alt" not in attrs:
+            errors.append(f"<img src={attrs.get('src')}> ohne alt-Attribut")
 
     for tag, attrs in tags:
         href = attrs.get("href") or ""
@@ -105,6 +126,21 @@ def check_home(tags):
     button = next((a for t, a in tags if t == "button" and "aria-controls" in a), None)
     if button is None or "aria-expanded" not in button or not button.get("aria-label"):
         errors.append("Menue-Button ohne aria-label/aria-expanded/aria-controls")
+
+    # Abschluesse standen frueher nur in einem per Klick nachgeladenen Tab.
+    if "BHT Berlin" not in visible_text(tags):
+        errors.append("Abschluesse (BHT Berlin) nicht im sichtbaren HTML")
+    return errors
+
+
+def check_post(tags):
+    errors = []
+    byline = [a for t, a in tags if t == "a" and a.get("rel") == "author"]
+    if not byline:
+        errors.append("Byline (Link mit rel=author) fehlt")
+    authors = [a.get("content") for t, a in tags if t == "meta" and a.get("name") == "author"]
+    if authors != [AUTHOR]:
+        errors.append(f"meta author {authors}, erwartet [{AUTHOR}]")
     return errors
 
 
@@ -121,11 +157,19 @@ def main():
 
     tree = ET.parse(os.path.join(OUT, "sitemap.xml"))
     ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-    urls = [loc.text.strip() for loc in tree.findall("s:url/s:loc", ns)]
+    entries = tree.findall("s:url", ns)
+    urls = [e.find("s:loc", ns).text.strip() for e in entries]
 
     failures = {}
+    sitemap_errors = []
     if f"{SITE_URL}/" not in urls:
-        failures["sitemap.xml"] = [f"Startseite nicht als {SITE_URL}/ eingetragen"]
+        sitemap_errors.append(f"Startseite nicht als {SITE_URL}/ eingetragen")
+    for entry in entries:
+        loc = entry.find("s:loc", ns).text.strip()
+        if "/blog/" in loc and entry.find("s:lastmod", ns) is None:
+            sitemap_errors.append(f"lastmod fehlt: {loc}")
+    if sitemap_errors:
+        failures["sitemap.xml"] = sitemap_errors
 
     for url in urls:
         path = file_for(url)
@@ -138,6 +182,8 @@ def main():
             errors += check_home(tags)
         if url == f"{SITE_URL}/blog":
             errors += check_blog(tags)
+        if url.startswith(f"{SITE_URL}/blog/"):
+            errors += check_post(tags)
         if errors:
             failures[url] = errors
 

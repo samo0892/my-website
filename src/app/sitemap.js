@@ -4,7 +4,7 @@ import { SITE_URL } from "../lib/site";
 export default function sitemap() {
   const posts = getAllPosts().map((post) => ({
     url: `${SITE_URL}/blog/${post.slug}`,
-    lastModified: post.date,
+    lastModified: post.updated ?? post.date,
   }));
 
   return [

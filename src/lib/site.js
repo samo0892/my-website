@@ -1,6 +1,16 @@
 export const SITE_URL = "https://www.sam-codes.com";
 export const SITE_NAME = "sam.codes";
 export const CONTACT_EMAIL = "hi@sam-codes.com";
+
+// Autor aller Artikel. Byline, Kontaktbereich und Metadaten lesen von hier,
+// damit Name und Profile ueberall gleich lauten.
+export const AUTHOR = {
+  name: "Samed Baldede",
+  url: `${SITE_URL}/#about`,
+  github: "https://github.com/samo0892/",
+  linkedin: "https://de.linkedin.com/in/samed-baldede",
+};
+
 export const BOOKING_URL =
   "https://calendly.com/samisfreelancing/sam-codes-erstgesprach";
 

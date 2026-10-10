@@ -3,7 +3,7 @@ import GithubIcon from "../../../public/github-icon.svg";
 import LinkedinIcon from "../../../public/linkedin-icon.svg";
 import Link from "next/link";
 import Image from "next/image";
-import { bookingUrl, CONTACT_EMAIL, mailtoHref } from "../../lib/site";
+import { AUTHOR, bookingUrl, CONTACT_EMAIL, mailtoHref } from "../../lib/site";
 
 // utmContent ordnet Buchungen der Seite zu, auf der der Abschnitt steht.
 const EmailSection = ({ utmContent = "kontakt" }) => {
@@ -23,11 +23,11 @@ const EmailSection = ({ utmContent = "kontakt" }) => {
           neue Projekte, remote oder vor Ort in Berlin.
         </p>
         <div className="socials flex flex-row gap-2">
-          <Link href="https://github.com/samo0892/">
-            <Image src={GithubIcon} alt="GitHub-Profil von Samed Baldede" />
+          <Link href={AUTHOR.github}>
+            <Image src={GithubIcon} alt={`GitHub-Profil von ${AUTHOR.name}`} />
           </Link>
-          <Link href="https://de.linkedin.com/in/samed-baldede">
-            <Image src={LinkedinIcon} alt="LinkedIn-Profil von Samed Baldede" />
+          <Link href={AUTHOR.linkedin}>
+            <Image src={LinkedinIcon} alt={`LinkedIn-Profil von ${AUTHOR.name}`} />
           </Link>
         </div>
       </div>
