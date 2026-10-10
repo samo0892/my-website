@@ -5,11 +5,13 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import rehypePrettyCode from "rehype-pretty-code";
 import rehypeCodeLanguage from "../../../lib/rehypeCodeLanguage";
+import rehypeHeadingIds from "../../../lib/rehypeHeadingIds";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import EmailSection from "../../components/EmailSection";
 import JsonLd from "../../components/JsonLd";
 import ServiceCta from "../../components/ServiceCta";
+import TableOfContents from "../../components/TableOfContents";
 import {
   getAllPosts,
   getPost,
@@ -82,6 +84,10 @@ const mdxComponents = {
     </div>
   ),
 };
+
+// Kurze Artikel kommen ohne Inhaltsverzeichnis aus, dort waere es nur ein
+// weiterer Kasten vor dem eigentlichen Text.
+const MIN_TOC_HEADINGS = 4;
 
 const prettyCodeOptions = {
   theme: "one-dark-pro",
@@ -160,6 +166,10 @@ export default function BlogPost({ params }) {
             />
           )}
 
+          {post.headings.length >= MIN_TOC_HEADINGS && (
+            <TableOfContents headings={post.headings} />
+          )}
+
           <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white prose-a:text-emerald-400">
             <MDXRemote
               source={post.content}
@@ -168,6 +178,7 @@ export default function BlogPost({ params }) {
                 mdxOptions: {
                   remarkPlugins: [remarkGfm],
                   rehypePlugins: [
+                    rehypeHeadingIds,
                     [rehypePrettyCode, prettyCodeOptions],
                     rehypeCodeLanguage,
                   ],

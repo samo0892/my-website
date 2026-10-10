@@ -177,6 +177,15 @@ def check_page(url, tags):
         if tag == "a" and BOOKING_HOST in href and "utm_content=" not in href:
             errors.append(f"Buchungslink ohne utm_content: {href}")
 
+    # Sprunglinks innerhalb der Seite (Inhaltsverzeichnis) muessen ein Ziel
+    # haben. Weichen Slugger in lib/blog.js und rehypeHeadingIds voneinander
+    # ab, fiele das sonst niemandem auf.
+    ids = {attrs["id"] for _, attrs in tags if attrs.get("id")}
+    for tag, attrs in tags:
+        href = attrs.get("href") or ""
+        if tag == "a" and href.startswith("#") and len(href) > 1 and href[1:] not in ids:
+            errors.append(f"Sprunglink ohne Ziel: {href}")
+
     return errors
 
 
@@ -222,6 +231,11 @@ def check_post(url, tags):
     # Jeder Artikel fuehrt auf mindestens eine Leistungsseite (Audit 3.3).
     if not any(t == "a" and (a.get("href") or "").startswith("/leistungen/") for t, a in tags):
         errors.append("kein Link auf eine Leistungsseite")
+    # Lange Artikel haben ein Inhaltsverzeichnis (Audit 4.5).
+    if len([a for t, a in tags if t == "h2"]) >= 4 and not any(
+        t == "nav" and a.get("aria-label") == "Inhaltsverzeichnis" for t, a in tags
+    ):
+        errors.append("Inhaltsverzeichnis fehlt")
     byline = [a for t, a in tags if t == "a" and a.get("rel") == "author"]
     if not byline:
         errors.append("Byline (Link mit rel=author) fehlt")

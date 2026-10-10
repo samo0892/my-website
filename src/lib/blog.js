@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { DEFAULT_OG_IMAGE } from "./site";
+import { createSlugger } from "./slugify";
 
 const POSTS_DIR = path.join(process.cwd(), "content", "blog");
 const PUBLIC_DIR = path.join(process.cwd(), "public");
@@ -22,6 +23,32 @@ const isoDate = (value) =>
 const readingTime = (content) => {
   const words = content.trim().split(/\s+/).length;
   return Math.max(1, Math.round(words / 200));
+};
+
+// Abschnitte fuer das Inhaltsverzeichnis: alle h2 ausserhalb von
+// Codebloecken. h3 laufen durch den Slugger mit, damit doppelte Titel
+// dieselbe Nummer bekommen wie in rehypeHeadingIds, landen aber nicht in
+// der Liste. Markdown in Ueberschriften (`code`, **fett**, Links) wird auf
+// den sichtbaren Text reduziert.
+const headingsOf = (content) => {
+  const slug = createSlugger();
+  const headings = [];
+  let inCode = false;
+
+  for (const line of content.split("\n")) {
+    if (/^\s*(```|~~~)/.test(line)) inCode = !inCode;
+    if (inCode) continue;
+
+    const match = line.match(/^(#{2,3})\s+(.+?)\s*#*\s*$/);
+    if (!match) continue;
+
+    const text = match[2]
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/[`*_]/g, "");
+    const id = slug(text);
+    if (match[1] === "##") headings.push({ id, text });
+  }
+  return headings;
 };
 
 const readPost = (fileName) => {
@@ -61,6 +88,7 @@ const readPost = (fileName) => {
     service: data.service ?? null,
     serviceText: data.serviceText ?? null,
     readingTime: readingTime(content),
+    headings: headingsOf(content),
   };
 };
 
