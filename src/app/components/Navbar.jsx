@@ -9,7 +9,7 @@ import MenuOverlay from "./MenuOverlay";
 const navLinks = [
   {
     title: "Leistungen",
-    path: "/#leistungen",
+    path: "/leistungen",
   },
   {
     title: "Über mich",

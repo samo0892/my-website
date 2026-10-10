@@ -1,8 +1,10 @@
-// Leistungen der Startseite. Die Karten in ServicesSection und die
-// Angebote im JSON-LD (lib/schema.js) lesen beide von hier.
+// Leistungen fuer die Karten auf Startseite und /leistungen, die Kopfzeilen
+// der Leistungsseiten und die Angebote im JSON-LD (lib/schema.js). Der
+// Langtext jeder Seite steht in content/leistungen/<slug>.mdx.
 // featured: Bauen ist das Hauptangebot und wird deshalb hervorgehoben.
 export const SERVICES = [
   {
+    slug: "mvp-entwicklung",
     label: "Bauen",
     title: "MVPs und komplette Anwendungen",
     featured: true,
@@ -16,6 +18,7 @@ export const SERVICES = [
     ],
   },
   {
+    slug: "llm-integration-java",
     label: "Integrieren",
     title: "KI in deine Java-Anwendung",
     teaser:
@@ -29,6 +32,7 @@ export const SERVICES = [
     ],
   },
   {
+    slug: "ki-coding-workshop",
     label: "Befähigen",
     title: "KI-gestützte Entwicklung für dein Team",
     teaser:
@@ -41,6 +45,7 @@ export const SERVICES = [
     ],
   },
   {
+    slug: "service-as-software",
     label: "Automatisieren",
     title: "Service-as-Software (SaS)",
     teaser:

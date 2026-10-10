@@ -1,0 +1,64 @@
+---
+metaTitle: "Service-as-Software: KI-Agenten für Prozesse"
+heading: "Service-as-Software: KI-Agenten, die wiederkehrende Arbeit erledigen"
+description: "Software, die die Aufgabe selbst erledigt: KI-Agenten übernehmen wiederkehrende Dienstleistungen, angebunden an deine Systeme, mit menschlicher Freigabe."
+intro: "Statt Software, mit der dein Team eine Aufgabe erledigt, baue ich Software, die die Aufgabe selbst erledigt. KI-Agenten übernehmen wiederkehrende Dienstleistungen von Anfang bis Ende, angebunden an deine bestehenden Systeme. Menschen geben nur dort frei, wo es darauf ankommt."
+relatedPosts:
+  - llms-mit-spring-boot-integrieren
+faq:
+  - frage: "Was ist der Unterschied zu klassischer Automatisierung oder RPA?"
+    antwort: "Klassische Automatisierung folgt festen Regeln und bricht ab, sobald eine Eingabe anders aussieht als erwartet. Ein KI-Agent kann mit unstrukturierten Eingaben wie E-Mails oder Dokumenten umgehen und Entscheidungen im Rahmen klarer Vorgaben treffen. Wo feste Regeln reichen, setze ich weiterhin auf sie, weil sie günstiger und verlässlicher sind."
+  - frage: "Was passiert, wenn der Agent einen Fehler macht?"
+    antwort: "Deshalb gibt es Freigabepunkte. Kritische Schritte, etwa eine Zahlung oder eine Antwort an einen Kunden, gibt ein Mensch frei, bis die Qualität nachweislich stimmt. Jede Entscheidung des Agenten wird protokolliert, sodass Fehler nachvollziehbar sind und sich gezielt beheben lassen."
+  - frage: "Welche Systeme lassen sich anbinden?"
+    antwort: "Grundsätzlich alles, was eine Schnittstelle hat: REST-APIs, Datenbanken, E-Mail-Postfächer, Dokumentenablagen oder Ticketsysteme. Der Agent nutzt deine bestehenden Systeme, statt ein weiteres Tool daneben zu stellen."
+  - frage: "Was kostet ein Service-as-Software-Projekt?"
+    antwort: "Das hängt vom Prozess, der Zahl der angebundenen Systeme und dem Umfang des Piloten ab. Im kostenlosen Erstgespräch schauen wir uns deinen Prozess an, danach bekommst du ein konkretes Angebot."
+---
+
+## Was Service-as-Software bedeutet
+
+Klassische Software, also auch Software as a Service, ist ein Werkzeug: Sie hilft deinem Team, eine Aufgabe schneller zu erledigen, aber erledigen muss es sie selbst. Service-as-Software dreht das um. Die Software übernimmt die Aufgabe, und dein Team kümmert sich um die Fälle, die wirklich menschliches Urteil brauchen.
+
+Möglich wird das durch KI-Agenten: Programme, die mit Hilfe eines Sprachmodells Eingaben verstehen, über die nächsten Schritte entscheiden und dazu deine bestehenden Systeme nutzen. Entscheidend ist, dass sie dabei in einem klar abgesteckten Rahmen arbeiten, mit festen Regeln, Prüfungen und Freigaben.
+
+## Welche Aufgaben sich eignen
+
+Nicht jeder Prozess ist ein guter Kandidat. Gut geeignet sind Aufgaben, die:
+
+- **regelmäßig und in größerer Zahl** anfallen, damit sich der Aufbau lohnt,
+- **ein erkennbares Muster** haben, auch wenn die Eingaben unterschiedlich aussehen,
+- **klare Qualitätskriterien** haben, an denen sich ein gutes Ergebnis messen lässt,
+- **digital vorliegen**, also als E-Mail, Dokument, Datensatz oder über eine Schnittstelle.
+
+Beispiele sind das Bearbeiten eingehender Anfragen, das Prüfen von Dokumenten auf Vollständigkeit und Plausibilität oder das Erstellen wiederkehrender Berichte aus mehreren Datenquellen.
+
+## Menschliche Freigabe, wo es darauf ankommt
+
+Ein Agent, der unkontrolliert handelt, ist ein Risiko. Deshalb plane ich von Anfang an, an welchen Stellen ein Mensch prüft und freigibt. Am Anfang sind das oft viele Stellen. Mit wachsendem Vertrauen und messbar guter Qualität können einzelne Freigaben entfallen.
+
+Jede Entscheidung des Agenten wird protokolliert: welche Eingabe er bekommen hat, welche Schritte er gegangen ist und warum. So bleibt nachvollziehbar, was passiert ist, auch für Prüfungen oder Rückfragen von Kunden.
+
+## Technik: ein stabiles Fundament
+
+Ich baue Agenten nicht als lose Sammlung von Prompts, sondern als normale, gut getestete Software. Das Fundament ist **Java** mit **Spring Boot** und **Spring AI**. Der Agent nutzt deine Systeme über Tool Calling, also über klar definierte Funktionen, die nur das dürfen, was sie sollen.
+
+Dazu gehören automatisierte Tests mit Beispielfällen, Monitoring für Fehler, Laufzeiten und Kosten sowie eine Auswertung, wie oft Menschen eingreifen mussten. Diese Zahl zeigt, ob der Agent besser wird und wo nachgebessert werden muss.
+
+## Grundlage für neue Geschäftsmodelle
+
+Wenn deine Software eine Dienstleistung selbst erbringt, verändert das auch, wie du sie anbieten kannst. Statt Lizenzen pro Arbeitsplatz kannst du nach Ergebnis abrechnen, etwa pro bearbeiteter Anfrage oder pro geprüftem Dokument. Für Dienstleister kann das ein Weg sein, ihr Angebot zu skalieren, ohne im gleichen Maß Personal aufzubauen.
+
+## So starten wir
+
+**Prozessanalyse:** Wir schauen uns gemeinsam einen konkreten Prozess an: Wie läuft er heute, wo liegt der Aufwand und welche Teile eignen sich für einen Agenten?
+
+**Pilot an einem Teilprozess:** Statt alles auf einmal zu automatisieren, beginnen wir mit einem überschaubaren Ausschnitt, mit vielen Freigabepunkten und messbaren Zielen.
+
+**Ausbau:** Wenn der Pilot überzeugt, erweitern wir Schritt für Schritt den Umfang und reduzieren die Freigaben dort, wo die Qualität es erlaubt.
+
+## Beispiel aus der Praxis
+
+<Platzhalter>
+Hier kommt ein echter Fall hin, gern anonymisiert: Welcher Prozess, wie lief er vorher, was übernimmt der Agent heute, wo gibt ein Mensch frei und was hat sich verändert, z. B. Bearbeitungszeit oder Volumen.
+</Platzhalter>

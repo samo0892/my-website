@@ -1,0 +1,70 @@
+---
+metaTitle: "LLM-Integration in Java: Spring AI Freelancer"
+heading: "KI-Integration in Java-Anwendungen mit Spring AI und LangChain4j"
+description: "Ich integriere LLMs in deine Java- und Spring-Boot-Anwendung: RAG, Datenextraktion, Klassifikation und Tool Calling. Freelancer aus Berlin."
+intro: "Deine Java-Anwendung läuft, und jetzt soll sie Dokumente verstehen, Anfragen einordnen oder Fragen zu internem Wissen beantworten. Ich baue die KI-Funktion direkt in dein Spring-Boot-Backend ein: mit Tests, Monitoring und austauschbarem Modell, statt einen Python-Dienst danebenzustellen."
+relatedPosts:
+  - spring-ai-rag-java-tutorial
+  - llms-mit-spring-boot-integrieren
+  - spring-ai-vs-langchain4j
+faq:
+  - frage: "Brauchen wir ein eigenes, trainiertes Modell?"
+    antwort: "In den meisten Fällen nicht. Ein vorhandenes Modell mit gutem Prompting, strukturierten Ausgaben und, wo nötig, RAG über deine Dokumente deckt die typischen Anwendungsfälle ab. Fine-Tuning lohnt sich nur selten und erst, wenn diese Mittel ausgereizt sind."
+  - frage: "Welches Modell setzt du ein?"
+    antwort: "Das hängt von Aufgabe, Datenschutzanforderungen und Budget ab. Ich kapsle den Modellzugriff hinter einer Abstraktion wie Spring AI oder LangChain4j. So kannst du den Anbieter später wechseln, ohne die Fachlogik anzufassen."
+  - frage: "Geht das DSGVO-konform?"
+    antwort: "Ja, wenn es von Anfang an mitgedacht wird. Optionen sind Modelle mit Datenverarbeitung in der EU, lokal betriebene Open-Source-Modelle oder das Entfernen personenbezogener Daten vor dem Modellaufruf. Welche Variante passt, klären wir im Architektur-Check. Eine Rechtsberatung ersetzt das nicht."
+  - frage: "Unsere Anwendung läuft auf Quarkus oder Jakarta EE. Geht das trotzdem?"
+    antwort: "Ja. Für Quarkus gibt es eine LangChain4j-Erweiterung, und LangChain4j funktioniert auch in klassischen Jakarta-EE-Anwendungen. Spring AI ist nur eine von mehreren Möglichkeiten."
+  - frage: "Was kostet eine KI-Integration?"
+    antwort: "Das hängt vom Anwendungsfall, deinen Daten und dem Zustand der bestehenden Anwendung ab. Im kostenlosen Erstgespräch klären wir den Umfang, danach bekommst du ein konkretes Angebot. Zusätzlich schätze ich im Architektur-Check die laufenden Modellkosten pro Anfrage."
+---
+
+## Wann sich KI in deiner Java-Anwendung lohnt
+
+Ein Sprachmodell ist kein Selbstzweck. Es lohnt sich dort, wo deine Anwendung heute mit unstrukturiertem Text kämpft oder Menschen Routinearbeit erledigen, die sich schwer in feste Regeln fassen lässt. Typische Fälle aus Java-Backends:
+
+- **Fragen an interne Dokumente (RAG):** Mitarbeitende oder Kunden stellen Fragen in natürlicher Sprache, die Antwort stützt sich auf deine Handbücher, Verträge oder Tickets und nennt die Quelle.
+- **Daten aus Texten extrahieren:** Aus E-Mails, PDFs oder Formularen werden strukturierte Daten, etwa Kundennummer, Betrag und Anliegen, direkt als Java-Objekt.
+- **Anfragen klassifizieren und weiterleiten:** Eingehende Tickets landen automatisch im richtigen Team, mit Priorität und Zusammenfassung.
+- **Tool Calling:** Das Modell ruft deine bestehenden Services auf, zum Beispiel um einen Bestellstatus nachzuschlagen, statt dass du eine neue Logik daneben baust.
+
+Genauso wichtig ist, wann es sich nicht lohnt. Wenn eine Aufgabe mit klaren Regeln lösbar ist oder jede Antwort hundertprozentig exakt sein muss, ist klassischer Code meist günstiger und verlässlicher. Das sage ich dir im Architektur-Check offen, bevor Geld in einen Prototyp fließt.
+
+## Warum im bestehenden Backend statt als Python-Dienst
+
+Viele KI-Beispiele sind in Python geschrieben, deshalb entsteht oft reflexartig ein separater Dienst. Für ein Java-Team bedeutet das eine zweite Sprache, eine zweite Deployment-Pipeline und eine Schnittstelle, über die Fachdaten hin- und hergeschoben werden.
+
+Ich gehe den umgekehrten Weg: Die KI-Funktion lebt dort, wo deine Fachlogik, deine Berechtigungen und deine Daten schon sind. Das Modell ist dabei eine externe Abhängigkeit wie ein Payment-Provider. Es wird gekapselt, bekommt Timeouts und Fallbacks und wird getestet. Dein Team kann den Code lesen, warten und erweitern, ohne eine neue Technologie zu lernen.
+
+## So läuft ein Projekt ab
+
+**1. Architektur-Check.** Wir schauen uns gemeinsam den Anwendungsfall, die Datenlage und die bestehende Architektur an. Du bekommst eine Einschätzung, ob sich KI dort lohnt, welches Modell und welcher Ansatz passen, wie der Datenschutz gelöst wird und mit welchen laufenden Kosten pro Anfrage du rechnen musst.
+
+**2. Prototyp an echten Daten.** Statt an Spielzeugbeispielen teste ich an einem repräsentativen Ausschnitt deiner Daten. Dazu gehört ein kleiner Satz an Testfällen mit erwarteten Ergebnissen. So lässt sich messen, wie gut die Lösung ist, und spätere Änderungen an Prompt oder Modell bleiben überprüfbar.
+
+**3. Integration für den Produktivbetrieb.** Der Prototyp wird zu produktionsreifem Code: saubere Kapselung im Service-Layer, strukturierte Ausgaben, Fehlerbehandlung, Timeouts und Wiederholungen, Logging und Metriken für Antwortzeiten, Fehler und Token-Verbrauch.
+
+**4. Übergabe.** Code, Tests, Dokumentation und Projektregeln liegen in deinem Repository. Ich erkläre deinem Team die Architektur, damit es die Funktion selbst weiterentwickeln kann.
+
+## Technik
+
+Ich arbeite mit **Spring AI** oder **LangChain4j**, je nachdem, was zu deinem Stack passt. Beide abstrahieren den Modellanbieter, sodass OpenAI, Azure OpenAI, Anthropic, Mistral oder lokal betriebene Modelle über Ollama austauschbar bleiben. Für RAG setze ich bevorzugt auf **PostgreSQL mit pgvector**, weil die meisten Teams PostgreSQL schon betreiben und keine zusätzliche Datenbank brauchen.
+
+Antworten des Modells werden direkt in Java-Records gemappt und validiert, statt Freitext mit regulären Ausdrücken zu zerlegen. Metriken laufen über Micrometer in dein bestehendes Monitoring.
+
+Wie das im Code aussieht, zeige ich im Blog: im [RAG-Tutorial mit Spring AI und pgvector](/blog/spring-ai-rag-java-tutorial) und in den [Best Practices für LLMs in Spring Boot](/blog/llms-mit-spring-boot-integrieren).
+
+## Datenschutz und Kosten von Anfang an
+
+Zwei Fragen entscheiden in Unternehmen über den Erfolg einer KI-Funktion, und beide werden oft zu spät gestellt.
+
+**Datenschutz:** Welche Daten verlassen dein System, wo werden sie verarbeitet und wie lange gespeichert? Je nach Anforderung kommen Anbieter mit Verarbeitung in der EU, lokal betriebene Modelle oder das Entfernen personenbezogener Daten vor dem Aufruf in Frage. Diese Entscheidung treffen wir im Architektur-Check, nicht nach dem Go-live.
+
+**Kosten:** Sprachmodelle werden nach Token abgerechnet. Ein Prompt, der zu viel Kontext mitschickt, wird bei tausenden Anfragen am Tag schnell teuer. Ich schätze die Kosten pro Anfrage vorab und mache den Verbrauch im Betrieb sichtbar.
+
+## Beispiel aus der Praxis
+
+<Platzhalter>
+Hier kommt ein echter Fall hin, gern anonymisiert: Ausgangslage (welche Anwendung, welches Problem), was du umgesetzt hast (Ansatz, Technik) und das Ergebnis, möglichst mit einer Zahl, z. B. gesparte Bearbeitungszeit oder Trefferquote.
+</Platzhalter>

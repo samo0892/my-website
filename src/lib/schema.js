@@ -14,6 +14,14 @@ const WEBSITE_ID = `${SITE_URL}/#website`;
 const BLOG_URL = `${SITE_URL}/blog`;
 const BLOG_ID = `${BLOG_URL}#blog`;
 
+const SERVICES_PATH = "/leistungen";
+const SERVICES_URL = `${SITE_URL}${SERVICES_PATH}`;
+const serviceId = (slug) => `${SERVICES_URL}/${slug}#service`;
+const AREA_SERVED = [
+  { "@type": "City", name: "Berlin" },
+  { "@type": "Country", name: "Deutschland" },
+];
+
 const absolute = (path) => (path.startsWith("http") ? path : `${SITE_URL}${path}`);
 
 // "@type" auch in der Kurzform: Ohne ihn liest Google den Autor auf Seiten
@@ -64,17 +72,21 @@ const person = () => ({
   sameAs: [AUTHOR.github.replace(/\/$/, ""), AUTHOR.linkedin],
   makesOffer: SERVICES.map((service) => ({
     "@type": "Offer",
-    itemOffered: {
-      "@type": "Service",
-      name: service.title,
-      description: service.teaser,
-      provider: { "@id": PERSON_ID },
-      areaServed: [
-        { "@type": "City", name: "Berlin" },
-        { "@type": "Country", name: "Deutschland" },
-      ],
-    },
+    itemOffered: { "@id": serviceId(service.slug) },
   })),
+});
+
+// Vollstaendiger Service-Knoten. Auf der Startseite fuer alle Leistungen,
+// auf einer Leistungsseite fuer die eigene. url nur, wenn die Seite
+// existiert: hasPage kommt aus lib/leistungen.js.
+const serviceNode = (service, hasPage) => ({
+  "@type": "Service",
+  "@id": serviceId(service.slug),
+  name: service.title,
+  description: service.teaser,
+  ...(hasPage && { url: `${SITE_URL}${SERVICES_PATH}/${service.slug}` }),
+  provider: personRef,
+  areaServed: AREA_SERVED,
 });
 
 const website = () => ({
@@ -86,7 +98,8 @@ const website = () => ({
   publisher: { "@id": PERSON_ID },
 });
 
-export const homeGraph = ({ title, description }) => {
+// pageSlugs: Leistungen mit eigener Seite (lib/leistungen.js).
+export const homeGraph = ({ title, description, pageSlugs }) => {
   const url = `${SITE_URL}/`;
   return graph(
     {
@@ -101,7 +114,8 @@ export const homeGraph = ({ title, description }) => {
       mainEntity: { "@id": PERSON_ID },
     },
     website(),
-    person()
+    person(),
+    ...SERVICES.map((service) => serviceNode(service, pageSlugs.has(service.slug)))
   );
 };
 
@@ -185,5 +199,67 @@ export const postGraph = (post) => {
       ["Blog", BLOG_URL],
       [post.title, url],
     ])
+  );
+};
+
+const faqNode = (url, faq) => ({
+  "@type": "FAQPage",
+  "@id": `${url}#faq`,
+  mainEntity: faq.map(({ frage, antwort }) => ({
+    "@type": "Question",
+    name: frage,
+    acceptedAnswer: { "@type": "Answer", text: antwort },
+  })),
+});
+
+export const servicesHubGraph = ({ title, description, pages }) =>
+  graph(
+    {
+      "@type": "CollectionPage",
+      "@id": SERVICES_URL,
+      url: SERVICES_URL,
+      name: title,
+      description,
+      inLanguage: "de-DE",
+      isPartOf: { "@id": WEBSITE_ID },
+      about: { "@id": PERSON_ID },
+      breadcrumb: { "@id": `${SERVICES_URL}#breadcrumb` },
+      mainEntity: {
+        "@type": "ItemList",
+        itemListElement: pages.map((page, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          url: `${SERVICES_URL}/${page.slug}`,
+          name: page.title,
+        })),
+      },
+    },
+    breadcrumbs(SERVICES_URL, [
+      ["Start", `${SITE_URL}/`],
+      ["Leistungen", SERVICES_URL],
+    ])
+  );
+
+export const serviceGraph = (page) => {
+  const url = `${SERVICES_URL}/${page.slug}`;
+  return graph(
+    {
+      "@type": "WebPage",
+      "@id": url,
+      url,
+      name: page.metaTitle,
+      description: page.description,
+      inLanguage: "de-DE",
+      isPartOf: { "@id": WEBSITE_ID },
+      mainEntity: { "@id": serviceId(page.slug) },
+      breadcrumb: { "@id": `${url}#breadcrumb` },
+    },
+    { ...serviceNode(page, true), description: page.description },
+    breadcrumbs(url, [
+      ["Start", `${SITE_URL}/`],
+      ["Leistungen", SERVICES_URL],
+      [page.title, url],
+    ]),
+    ...(page.faq.length ? [faqNode(url, page.faq)] : [])
   );
 };

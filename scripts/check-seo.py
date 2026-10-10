@@ -148,6 +148,11 @@ def check_page(url, tags):
         if tag == "img" and "alt" not in attrs:
             errors.append(f"<img src={attrs.get('src')}> ohne alt-Attribut")
 
+    # Entwuerfe markieren fehlenden Inhalt mit <Platzhalter>. Der darf nie
+    # live gehen.
+    if any("data-platzhalter" in attrs for _, attrs in tags):
+        errors.append("Platzhalter im HTML: Entwurf noch nicht fertig")
+
     for tag, attrs in tags:
         href = attrs.get("href") or ""
         if tag == "a" and BOOKING_HOST in href and "utm_content=" not in href:
@@ -204,6 +209,18 @@ def check_post(url, tags):
     return errors
 
 
+def check_services_hub(tags):
+    return check_jsonld(f"{SITE_URL}/leistungen", tags, ["CollectionPage", "BreadcrumbList"])
+
+
+def check_service(url, tags):
+    required = ["Service", "BreadcrumbList"]
+    # Sichtbare FAQ und FAQPage im Schema gehoeren zusammen.
+    if any(t == "dl" for t, _ in tags):
+        required.append("FAQPage")
+    return check_jsonld(url, tags, required)
+
+
 def check_blog(tags):
     errors = check_jsonld(f"{SITE_URL}/blog", tags, ["Blog", "BreadcrumbList"])
     card = first_img(tags, "/images/og/")
@@ -245,6 +262,10 @@ def main():
             errors += check_blog(tags)
         if url.startswith(f"{SITE_URL}/blog/"):
             errors += check_post(url, tags)
+        if url == f"{SITE_URL}/leistungen":
+            errors += check_services_hub(tags)
+        if url.startswith(f"{SITE_URL}/leistungen/"):
+            errors += check_service(url, tags)
         if errors:
             failures[url] = errors
 
