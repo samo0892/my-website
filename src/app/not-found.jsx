@@ -20,7 +20,7 @@ export default function NotFound() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/"
-              className="px-6 py-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 hover:bg-green-600 text-white"
+              className="px-6 py-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 hover:bg-green-600 text-[#121212] font-semibold"
             >
               Zur Startseite
             </Link>

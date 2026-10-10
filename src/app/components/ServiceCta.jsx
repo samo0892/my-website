@@ -12,7 +12,9 @@ const ServiceCta = ({ slug, children }) => {
   if (!service) throw new Error(`ServiceCta: unbekannte Leistung "${slug}"`);
 
   return (
-    <aside
+    // div statt aside: Ein aside im article waere ein verschachtelter
+    // Landmark-Bereich, Screenreader listen ihn dann neben main auf.
+    <div
       data-service-cta
       className="not-prose my-10 rounded-xl border border-emerald-500/40 bg-[#181818] p-6"
     >
@@ -29,7 +31,7 @@ const ServiceCta = ({ slug, children }) => {
       >
         {service.title} →
       </Link>
-    </aside>
+    </div>
   );
 };
 

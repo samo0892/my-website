@@ -36,7 +36,7 @@ const EmailSection = ({ utmContent = "kontakt" }) => {
           href={bookingUrl(utmContent)}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-2.5 px-5 rounded-lg w-full sm:w-fit text-center transition"
+          className="bg-emerald-500 hover:bg-emerald-400 text-[#121212] font-semibold py-2.5 px-5 rounded-lg w-full sm:w-fit text-center transition"
         >
           Erstgespräch buchen
           <span className="sr-only"> (öffnet in neuem Tab)</span>

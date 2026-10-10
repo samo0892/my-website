@@ -77,11 +77,16 @@ export async function generateMetadata({ params }) {
 // uebernehmen; gefaerbt werden nur die Tokens.
 // Komponenten, die die MDX-Artikel verwenden duerfen. Tabellen sind auf
 // dem Handy oft breiter als die Textspalte, ohne Wrapper schneidet der
-// Browser die rechten Spalten ab.
+// Browser die rechten Spalten ab. tabIndex, damit sich der Bereich auch
+// per Tastatur scrollen laesst. Kein role="region": Der braeuchte einen
+// eindeutigen Namen, und das RAG-Tutorial hat zwei Tabellen.
 const mdxComponents = {
   ServiceCta,
   table: (props) => (
-    <div className="overflow-x-auto">
+    <div
+      className="overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+      tabIndex={0}
+    >
       <table {...props} />
     </div>
   ),
@@ -120,12 +125,12 @@ export default async function BlogPost({ params }) {
             <p className="text-[#ADB7BE] text-lg">{post.description}</p>
             {/* Byline: Der Autor muss im sichtbaren Text stehen, nicht nur
                 in den Metadaten, damit Leser und Suchmaschinen ihn sehen. */}
-            <p className="text-sm text-slate-500 mt-4">
+            <p className="text-sm text-slate-400 mt-4">
               Von{" "}
               <Link
                 href="/#about"
                 rel="author"
-                className="text-[#ADB7BE] hover:text-white transition"
+                className="text-[#ADB7BE] underline decoration-slate-600 underline-offset-4 hover:text-white transition"
               >
                 {AUTHOR.name}
               </Link>

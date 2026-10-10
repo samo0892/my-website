@@ -17,7 +17,7 @@ const ExtLink = ({ href, children }) => (
 
 const Datenschutz = () => {
   return (
-    <section className="min-h-screen bg-[#121212] text-white px-6 py-16 lg:py-24">
+    <main className="min-h-screen bg-[#121212] text-white px-6 py-16 lg:py-24">
       <div className="max-w-4xl mx-auto">
         <h1
           className="text-4xl sm:text-5xl font-extrabold mb-10 text-center bg-gradient-to-r from-green-400 to-emerald-600 text-transparent bg-clip-text"
@@ -316,13 +316,13 @@ const Datenschutz = () => {
         <div className="mt-12 text-center">
           <Link
             href="/"
-            className="inline-block bg-gradient-to-br from-green-500 to-emerald-500 text-white font-medium py-3 px-6 rounded-full hover:bg-emerald-700 transition"
+            className="inline-block bg-gradient-to-br from-green-500 to-emerald-500 text-[#121212] font-semibold py-3 px-6 rounded-full hover:bg-emerald-700 transition"
           >
             Zurück zur Startseite
           </Link>
         </div>
       </div>
-    </section>
+    </main>
   );
 };
 

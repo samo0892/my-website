@@ -40,7 +40,7 @@ const HeroSection = () => {
               href={bookingUrl("home-hero")}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 py-3 w-full sm:w-fit rounded-full bg-gradient-to-br from-green-500 to-emerald-500 hover:bg-green-600 text-white text-center"
+              className="px-6 py-3 w-full sm:w-fit rounded-full bg-gradient-to-br from-green-500 to-emerald-500 hover:bg-green-600 text-[#121212] font-semibold text-center"
             >
               Kostenloses Erstgespräch (30 Min)
               <span className="sr-only"> (öffnet in neuem Tab)</span>

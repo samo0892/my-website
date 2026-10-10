@@ -26,7 +26,7 @@ const PostCard = ({ post, headingLevel = "h2", priority = false }) => {
         />
       )}
       <div className="p-5">
-        <p className="text-xs text-slate-500 mb-2">
+        <p className="text-xs text-slate-400 mb-2">
           <time dateTime={post.date}>{formatDate(post.date)}</time>
           {" · "}
           {post.readingTime} Min.

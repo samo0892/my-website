@@ -63,7 +63,7 @@ export default async function LeistungPage({ params }) {
               href={bookingUrl(`leistung-${page.slug}`)}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-8 inline-block px-6 py-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 hover:bg-green-600 text-white"
+              className="mt-8 inline-block px-6 py-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 hover:bg-green-600 text-[#121212] font-semibold"
             >
               Kostenloses Erstgespräch (30 Min)
               <span className="sr-only"> (öffnet in neuem Tab)</span>

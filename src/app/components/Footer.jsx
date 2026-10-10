@@ -12,7 +12,7 @@ const Footer = () => {
           height="40"
           className="shrink-0"
         />
-        <p className="text-slate-600">
+        <p className="text-slate-400">
           © {new Date().getFullYear()} Samed Baldede. Alle Rechte vorbehalten.
         </p>
         <div className="flex flex-row gap-4">

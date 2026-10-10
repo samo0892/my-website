@@ -22,7 +22,7 @@ const TableOfContents = ({ headings }) => (
           ▾
         </span>
       </summary>
-      <ol className="list-decimal space-y-2 border-t border-[#33353F] py-4 pl-10 pr-5 text-[#ADB7BE] marker:text-slate-500">
+      <ol className="list-decimal space-y-2 border-t border-[#33353F] py-4 pl-10 pr-5 text-[#ADB7BE] marker:text-slate-400">
         {headings.map(({ id, text }) => (
           <li key={id}>
             <a href={`#${id}`} className="hover:text-emerald-400 transition">
