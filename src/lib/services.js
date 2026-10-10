@@ -2,9 +2,13 @@
 // der Leistungsseiten und die Angebote im JSON-LD (lib/schema.js). Der
 // Langtext jeder Seite steht in content/leistungen/<slug>.mdx.
 // featured: Bauen ist das Hauptangebot und wird deshalb hervorgehoben.
+// summary: ein Satz fuer die kompakten Karten der Startseite, teaser und
+// points stehen auf /leistungen und den Leistungsseiten.
 export const SERVICES = [
   {
     slug: "mvp-entwicklung",
+    summary:
+      "Aus deiner Idee wird ein lauffähiges Produkt, vom Proof of Concept bis zur Anwendung in Produktion.",
     label: "Bauen",
     title: "MVPs und komplette Anwendungen",
     featured: true,
@@ -19,6 +23,8 @@ export const SERVICES = [
   },
   {
     slug: "llm-integration-java",
+    summary:
+      "LLMs direkt in deiner Java-Anwendung, dort, wo deine Fachlogik schon lebt.",
     label: "Integrieren",
     title: "KI in deine Java-Anwendung",
     teaser:
@@ -33,6 +39,8 @@ export const SERVICES = [
   },
   {
     slug: "ki-coding-workshop",
+    summary:
+      "Dein Team lernt, mit KI-Agenten am eigenen Code wirklich schneller zu werden.",
     label: "Befähigen",
     title: "KI-gestützte Entwicklung für dein Team",
     teaser:
@@ -46,6 +54,8 @@ export const SERVICES = [
   },
   {
     slug: "service-as-software",
+    summary:
+      "KI-Agenten erledigen wiederkehrende Dienstleistungen selbst, Menschen geben nur an kritischen Stellen frei.",
     label: "Automatisieren",
     title: "Service-as-Software (SaS)",
     teaser:
