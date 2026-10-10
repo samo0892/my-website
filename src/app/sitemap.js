@@ -2,6 +2,9 @@ import { getAllPosts } from "../lib/blog";
 import { getAllServicePages, servicePath } from "../lib/leistungen";
 import { SITE_URL } from "../lib/site";
 
+// Seit Next 15 Pflicht beim statischen Export (output: "export").
+export const dynamic = "force-static";
+
 export default function sitemap() {
   const posts = getAllPosts().map((post) => ({
     url: `${SITE_URL}/blog/${post.slug}`,

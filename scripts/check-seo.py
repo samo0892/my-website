@@ -134,7 +134,11 @@ def links(tags, rel):
 def check_page(url, tags):
     errors = []
 
+    # Next 16 gibt die Startseite als Origin ohne "/" aus. Fuer den Root
+    # ist das dieselbe URL (leerer Pfad == "/"), nur dort gilt beides.
     canonicals = [a.get("href") for a in links(tags, "canonical")]
+    if url == f"{SITE_URL}/" and canonicals == [SITE_URL]:
+        canonicals = [url]
     if canonicals != [url]:
         errors.append(f"canonical {canonicals}, erwartet [{url}]")
 

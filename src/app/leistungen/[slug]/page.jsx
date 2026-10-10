@@ -17,8 +17,10 @@ import { serviceGraph } from "../../../lib/schema";
 export const generateStaticParams = () =>
   getAllServicePages().map((page) => ({ slug: page.slug }));
 
-export function generateMetadata({ params }) {
-  const page = getServicePage(params.slug);
+// Seit Next 15 ist params ein Promise.
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const page = getServicePage(slug);
   if (!page) return {};
   return pageMetadata({
     title: page.metaTitle,
@@ -30,8 +32,9 @@ export function generateMetadata({ params }) {
 // Komponenten, die die MDX-Texte der Leistungsseiten verwenden duerfen.
 const mdxComponents = { Platzhalter };
 
-export default function LeistungPage({ params }) {
-  const page = getServicePage(params.slug);
+export default async function LeistungPage({ params }) {
+  const { slug } = await params;
+  const page = getServicePage(slug);
   if (!page) notFound();
 
   const relatedPosts = page.relatedPosts.map(getPost).filter(Boolean);

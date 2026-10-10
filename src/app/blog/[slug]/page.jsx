@@ -29,8 +29,10 @@ import { postGraph } from "../../../lib/schema";
 export const generateStaticParams = () =>
   getAllPosts().map((post) => ({ slug: post.slug }));
 
-export function generateMetadata({ params }) {
-  const post = getPost(params.slug);
+// Seit Next 15 ist params ein Promise.
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const post = getPost(slug);
   if (!post) return {};
 
   const socialImage = socialImageFor(post);
@@ -94,8 +96,9 @@ const prettyCodeOptions = {
   keepBackground: false,
 };
 
-export default function BlogPost({ params }) {
-  const post = getPost(params.slug);
+export default async function BlogPost({ params }) {
+  const { slug } = await params;
+  const post = getPost(slug);
   if (!post) notFound();
 
   return (
