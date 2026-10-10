@@ -3,12 +3,17 @@ import Footer from "../components/Footer";
 import EmailSection from "../components/EmailSection";
 import PostCard from "../components/PostCard";
 import { getAllPosts } from "../../lib/blog";
+import JsonLd from "../components/JsonLd";
 import { pageMetadata } from "../../lib/site";
+import { blogGraph } from "../../lib/schema";
+
+const TITLE = "Java & KI Blog: Spring AI, LLM-Integration, RAG";
+const DESCRIPTION =
+  "Artikel zu Java-Backend-Entwicklung, Spring Boot, Quarkus und der Integration von LLMs in bestehende Systeme.";
 
 export const metadata = pageMetadata({
-  title: "Java & KI Blog: Spring AI, LLM-Integration, RAG",
-  description:
-    "Artikel zu Java-Backend-Entwicklung, Spring Boot, Quarkus und der Integration von LLMs in bestehende Systeme.",
+  title: TITLE,
+  description: DESCRIPTION,
   path: "/blog",
 });
 
@@ -17,6 +22,7 @@ export default function BlogPage() {
 
   return (
     <main className="flex min-h-screen flex-col bg-[#121212]">
+      <JsonLd data={blogGraph({ title: TITLE, description: DESCRIPTION, posts })} />
       <Navbar />
       <div className="container mt-24 mx-auto px-6 md:px-12 py-4">
         <section className="mt-12">

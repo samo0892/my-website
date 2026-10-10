@@ -8,23 +8,33 @@ import rehypeCodeLanguage from "../../../lib/rehypeCodeLanguage";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import EmailSection from "../../components/EmailSection";
-import { getAllPosts, getPost, formatDate } from "../../../lib/blog";
+import JsonLd from "../../components/JsonLd";
+import {
+  getAllPosts,
+  getPost,
+  formatDate,
+  isoDateTime,
+} from "../../../lib/blog";
 import {
   SITE_NAME,
   AUTHOR,
   FEED_ALTERNATE,
   DEFAULT_OG_IMAGE,
 } from "../../../lib/site";
+import { postGraph } from "../../../lib/schema";
 
 export const generateStaticParams = () =>
   getAllPosts().map((post) => ({ slug: post.slug }));
+
+// Titelkarten und Hero-Bilder sind 1200x630, ebenso das Standardbild.
+const socialImageFor = (post) =>
+  post.ogImage ?? post.image ?? DEFAULT_OG_IMAGE.url;
 
 export function generateMetadata({ params }) {
   const post = getPost(params.slug);
   if (!post) return {};
 
-  // Titelkarten und Hero-Bilder sind 1200x630, ebenso das Standardbild.
-  const socialImage = post.ogImage ?? post.image ?? DEFAULT_OG_IMAGE.url;
+  const socialImage = socialImageFor(post);
 
   return {
     // absolute statt Template: metaTitle ist schon auf die Laenge in
@@ -44,8 +54,8 @@ export function generateMetadata({ params }) {
       siteName: SITE_NAME,
       locale: "de_DE",
       type: "article",
-      publishedTime: post.date,
-      modifiedTime: post.updated ?? post.date,
+      publishedTime: isoDateTime(post.date),
+      modifiedTime: isoDateTime(post.updated ?? post.date),
       authors: [AUTHOR.url],
       images: [{ url: socialImage, width: 1200, height: 630, alt: post.title }],
     },
@@ -75,6 +85,7 @@ export default function BlogPost({ params }) {
 
   return (
     <main className="flex min-h-screen flex-col bg-[#121212]">
+      <JsonLd data={postGraph({ post, image: socialImageFor(post) })} />
       <Navbar />
       <div className="container mt-24 mx-auto px-6 md:px-12 py-4">
         <article className="max-w-3xl mx-auto">

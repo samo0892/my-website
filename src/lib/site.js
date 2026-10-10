@@ -2,6 +2,16 @@ export const SITE_URL = "https://www.sam-codes.com";
 export const SITE_NAME = "sam.codes";
 export const CONTACT_EMAIL = "hi@sam-codes.com";
 
+// Rolle und Ort vorne, damit der Titel zu Suchen wie "Java Freelancer
+// Berlin" passt. Wird er in den Ergebnissen gekuerzt, faellt die Marke weg.
+// Steht im Root-Layout und im JSON-LD der Startseite.
+export const HOME_TITLE =
+  "Java-Entwickler Berlin (Freelance): Spring Boot & KI | sam.codes";
+// Hoechstens ~155 Zeichen, sonst kuerzt Google die Beschreibung.
+export const HOME_DESCRIPTION =
+  "Freelance Java-Backend-Entwickler in Berlin: MVPs zum Festpreis, " +
+  "LLM-Integration mit Spring AI und Workshops für KI-gestützte Entwicklung.";
+
 // Autor aller Artikel. Byline, Kontaktbereich und Metadaten lesen von hier,
 // damit Name und Profile ueberall gleich lauten.
 export const AUTHOR = {

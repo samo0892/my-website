@@ -6,7 +6,9 @@ import AboutSection from "./components/AboutSection";
 import BlogSection from "./components/BlogSection";
 import EmailSection from "./components/EmailSection";
 import Footer from "./components/Footer";
-import { FEED_ALTERNATE } from "../lib/site";
+import JsonLd from "./components/JsonLd";
+import { FEED_ALTERNATE, HOME_TITLE, HOME_DESCRIPTION } from "../lib/site";
+import { homeGraph } from "../lib/schema";
 
 // Titel, Beschreibung und openGraph kommen aus dem Root-Layout. alternates
 // ersetzt Next als Ganzes, deshalb steht der RSS-Link hier noch einmal.
@@ -20,6 +22,7 @@ export const metadata = {
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col bg-[#121212]">
+      <JsonLd data={homeGraph({ title: HOME_TITLE, description: HOME_DESCRIPTION })} />
       <Navbar />
       <div className="container mt-24 mx-auto px-12 py-4">
         <HeroSection />

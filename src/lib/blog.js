@@ -68,6 +68,20 @@ export const getPost = (slug) => {
   return readPost(file);
 };
 
+// Frontmatter-Daten haben keine Uhrzeit. JSON-LD und og:article wollen
+// eine mit Zeitzone, sonst meldet Google "Zeitzone fehlt". Mitternacht in
+// Berlin, Sommer- oder Winterzeit je nach Datum.
+export const isoDateTime = (date) => {
+  const offset = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Berlin",
+    timeZoneName: "longOffset",
+  })
+    .formatToParts(new Date(`${date}T12:00:00Z`))
+    .find((part) => part.type === "timeZoneName")
+    .value.replace("GMT", "");
+  return `${date}T00:00:00${offset || "+00:00"}`;
+};
+
 export const formatDate = (date) =>
   new Intl.DateTimeFormat("de-DE", {
     day: "numeric",

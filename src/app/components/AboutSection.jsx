@@ -1,34 +1,14 @@
 import React from "react";
 import Image from "next/image";
-
-// Alles steht direkt im HTML statt in Tabs: Abschluesse und Zertifikate
-// waren vorher nur nach einem Klick sichtbar und fehlten damit im
-// ausgelieferten HTML, das Suchmaschinen und KI-Systeme lesen.
-const SKILLS = [
-  "Java",
-  "Spring Boot",
-  "Quarkus",
-  "Jakarta EE",
-  "REST- und API-Design",
-  "JPA / Hibernate",
-  "SQL / relationale Datenbanken",
-  "Testing (JUnit, Integrationstests)",
-  "Docker / Containerisierung",
-  "LLM-Integration in Java-Anwendungen",
-  "KI-gestützte Entwicklung",
-];
-
-const EDUCATION = [
-  "M.Sc. Medieninformatik – BHT Berlin",
-  "B.Eng. Technische Informatik – BHT Berlin",
-];
-
-const CERTIFICATIONS = ["Scrum Master"];
+import { SKILLS, EDUCATION, SCHOOL, CERTIFICATIONS } from "../../lib/profile";
 
 const SubHeading = ({ children }) => (
   <h3 className="text-lg font-semibold text-white mb-3">{children}</h3>
 );
 
+// Alles steht direkt im HTML statt in Tabs: Abschluesse und Zertifikate
+// waren vorher nur nach einem Klick sichtbar und fehlten damit im
+// ausgelieferten HTML, das Suchmaschinen und KI-Systeme lesen.
 const AboutSection = () => {
   return (
     <section className="text-white" id="about">
@@ -67,8 +47,8 @@ const AboutSection = () => {
             <div>
               <SubHeading>Bildung</SubHeading>
               <ul className="list-disc pl-5 space-y-1 text-[#ADB7BE]">
-                {EDUCATION.map((entry) => (
-                  <li key={entry}>{entry}</li>
+                {EDUCATION.map(({ degree }) => (
+                  <li key={degree}>{`${degree} – ${SCHOOL.alternateName}`}</li>
                 ))}
               </ul>
             </div>

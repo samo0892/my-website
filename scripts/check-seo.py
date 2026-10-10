@@ -8,6 +8,7 @@ einem "Failed if" aus dem Audit: Schlaegt eine fehl, endet das Skript mit
 Exit-Code 1 und der Deploy bricht ab, statt eine Regression auszuliefern.
 Nur Standardbibliothek, damit es auch mit dem Python des Macs laeuft.
 """
+import json
 import os
 import re
 import sys
@@ -22,27 +23,37 @@ BOOKING_HOST = "calendly.com"
 
 
 class Tags(HTMLParser):
-    """Sammelt alle Start-Tags als (name, attrs) in Dokumentreihenfolge und
-    den sichtbaren Text. Text in <script> zaehlt nicht: Dort steht die
-    RSC-Payload, die Suchmaschinen nicht als Seiteninhalt werten."""
+    """Sammelt alle Start-Tags als (name, attrs) in Dokumentreihenfolge, den
+    sichtbaren Text und den Inhalt der JSON-LD-Bloecke. Sonstiger Text in
+    <script> zaehlt nicht: Dort steht die RSC-Payload, die Suchmaschinen
+    nicht als Seiteninhalt werten."""
 
     def __init__(self):
         super().__init__()
         self.tags = []
         self.text = []
+        self.jsonld = []
         self._skip = 0
+        self._in_jsonld = False
 
     def handle_starttag(self, tag, attrs):
-        self.tags.append((tag, dict(attrs)))
+        attrs = dict(attrs)
+        self.tags.append((tag, attrs))
         if tag in ("script", "style"):
             self._skip += 1
+            if attrs.get("type") == "application/ld+json":
+                self._in_jsonld = True
+                self.jsonld.append("")
 
     def handle_endtag(self, tag):
         if tag in ("script", "style") and self._skip:
             self._skip -= 1
+            self._in_jsonld = False
 
     def handle_data(self, data):
-        if not self._skip:
+        if self._in_jsonld:
+            self.jsonld[-1] += data
+        elif not self._skip:
             self.text.append(data)
 
 
@@ -51,11 +62,45 @@ def parse(path):
     with open(path, encoding="utf-8") as f:
         parser.feed(f.read())
     parser.tags.append(("#text", {"value": " ".join(parser.text)}))
+    parser.tags.append(("#jsonld", {"value": parser.jsonld}))
     return parser.tags
 
 
 def visible_text(tags):
     return next(a["value"] for t, a in tags if t == "#text")
+
+
+def jsonld_nodes(tags):
+    """Alle Knoten aus allen JSON-LD-Bloecken, @graph aufgeloest. Bloecke,
+    die nicht parsen, kommen als Fehlertext in die zweite Liste."""
+    nodes, errors = [], []
+    for block in next(a["value"] for t, a in tags if t == "#jsonld"):
+        try:
+            data = json.loads(block)
+        except ValueError as e:
+            errors.append(f"JSON-LD parst nicht: {e}")
+            continue
+        for item in data if isinstance(data, list) else [data]:
+            nodes.extend(item.get("@graph", [item]))
+    return nodes, errors
+
+
+def of_type(nodes, schema_type):
+    return [n for n in nodes if n.get("@type") == schema_type]
+
+
+def check_jsonld(url, tags, required):
+    """Seite muss JSON-LD haben, ein Knoten traegt die Canonical-URL als @id
+    und die Typen aus required kommen vor. Parse-Fehler meldet main()."""
+    nodes, errors = jsonld_nodes(tags)[0], []
+    if not nodes:
+        return ["JSON-LD fehlt"]
+    if not any(n.get("@id") == url for n in nodes):
+        errors.append(f"kein JSON-LD-Knoten mit @id {url}")
+    for schema_type in required:
+        if not of_type(nodes, schema_type):
+            errors.append(f"JSON-LD ohne {schema_type}")
+    return errors
 
 
 def file_for(url):
@@ -130,11 +175,26 @@ def check_home(tags):
     # Abschluesse standen frueher nur in einem per Klick nachgeladenen Tab.
     if "BHT Berlin" not in visible_text(tags):
         errors.append("Abschluesse (BHT Berlin) nicht im sichtbaren HTML")
+
+    errors += check_jsonld(f"{SITE_URL}/", tags, ["WebSite", "Person"])
+    people = of_type(jsonld_nodes(tags)[0], "Person")
+    if people and people[0].get("name") != AUTHOR:
+        errors.append(f"JSON-LD Person heisst {people[0].get('name')}, erwartet {AUTHOR}")
     return errors
 
 
-def check_post(tags):
-    errors = []
+def check_post(url, tags):
+    errors = check_jsonld(url, tags, ["BlogPosting", "BreadcrumbList"])
+    # Das Audit wertet es als Fehler, wenn der Autor im Schema nicht dem
+    # sichtbaren entspricht; das Datum muss zu article:published_time passen.
+    for article in of_type(jsonld_nodes(tags)[0], "BlogPosting"):
+        if article.get("author", {}).get("name") != AUTHOR:
+            errors.append(f"BlogPosting-Autor {article.get('author')}, erwartet {AUTHOR}")
+        if [article.get("datePublished")] != meta(tags, "article:published_time"):
+            errors.append("BlogPosting.datePublished passt nicht zu article:published_time")
+        image = article.get("image", {}).get("url", "")
+        if not image.startswith(SITE_URL):
+            errors.append(f"BlogPosting.image nicht absolut: {image}")
     byline = [a for t, a in tags if t == "a" and a.get("rel") == "author"]
     if not byline:
         errors.append("Byline (Link mit rel=author) fehlt")
@@ -145,10 +205,11 @@ def check_post(tags):
 
 
 def check_blog(tags):
+    errors = check_jsonld(f"{SITE_URL}/blog", tags, ["Blog", "BreadcrumbList"])
     card = first_img(tags, "/images/og/")
     if card is not None and card.get("loading") == "lazy":
-        return ["erstes Kartenbild auf /blog wird lazy geladen"]
-    return []
+        errors.append("erstes Kartenbild auf /blog wird lazy geladen")
+    return errors
 
 
 def main():
@@ -177,13 +238,13 @@ def main():
             failures[url] = [f"Datei fehlt: {os.path.relpath(path, OUT)}"]
             continue
         tags = parse(path)
-        errors = check_page(url, tags)
+        errors = check_page(url, tags) + jsonld_nodes(tags)[1]
         if url == f"{SITE_URL}/":
             errors += check_home(tags)
         if url == f"{SITE_URL}/blog":
             errors += check_blog(tags)
         if url.startswith(f"{SITE_URL}/blog/"):
-            errors += check_post(tags)
+            errors += check_post(url, tags)
         if errors:
             failures[url] = errors
 
