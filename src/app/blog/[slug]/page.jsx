@@ -71,8 +71,17 @@ export function generateMetadata({ params }) {
 // also kein Highlighter-JS im Bundle. keepBackground: false laesst den
 // Codeblock-Hintergrund aus globals.css stehen, statt den des Themes zu
 // uebernehmen; gefaerbt werden nur die Tokens.
-// Komponenten, die die MDX-Artikel verwenden duerfen.
-const mdxComponents = { ServiceCta };
+// Komponenten, die die MDX-Artikel verwenden duerfen. Tabellen sind auf
+// dem Handy oft breiter als die Textspalte, ohne Wrapper schneidet der
+// Browser die rechten Spalten ab.
+const mdxComponents = {
+  ServiceCta,
+  table: (props) => (
+    <div className="overflow-x-auto">
+      <table {...props} />
+    </div>
+  ),
+};
 
 const prettyCodeOptions = {
   theme: "one-dark-pro",
@@ -124,6 +133,14 @@ export default function BlogPost({ params }) {
               {" · "}
               {post.readingTime} Min. Lesezeit
             </p>
+            {post.shortAnswer && (
+              <div className="mt-6 rounded-lg border-l-4 border-emerald-500 bg-[#181818] px-5 py-4">
+                <p className="text-sm font-semibold uppercase tracking-wider text-emerald-400 mb-1">
+                  Kurz gesagt
+                </p>
+                <p className="text-[#ADB7BE]">{post.shortAnswer}</p>
+              </div>
+            )}
             {post.testedWith.length > 0 && (
               <p className="mt-6 rounded-lg border border-[#33353F] bg-[#181818] px-4 py-3 text-sm text-[#ADB7BE]">
                 <span className="font-semibold text-white">Getestet mit:</span>{" "}

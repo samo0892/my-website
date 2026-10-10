@@ -37,6 +37,10 @@ const readPost = (fileName) => {
     // H1 laenger sein soll als der Meta-Titel.
     metaTitle: data.metaTitle ?? data.title,
     description: data.description ?? "",
+    // Antwort auf die Kernfrage des Artikels in zwei, drei Saetzen. Steht
+    // als Kasten unter der Ueberschrift, damit Leser und Suchmaschinen das
+    // Ergebnis sofort finden.
+    shortAnswer: data.shortAnswer ?? null,
     keywords: data.keywords ?? [],
     date: isoDate(data.date),
     // Nur bei inhaltlichen Aenderungen setzen, nicht fuer Tippfehler: Das

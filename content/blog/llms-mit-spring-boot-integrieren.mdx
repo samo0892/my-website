@@ -2,6 +2,7 @@
 title: "LLMs mit Spring Boot integrieren: Architektur und Best Practices für Java-Anwendungen"
 metaTitle: "LLMs mit Spring Boot integrieren: Best Practices"
 description: "Wie du LLMs sauber in Spring Boot integrierst: Architektur, Spring AI, strukturierte Outputs, Tool Calling, RAG, Fehlerbehandlung und Observability."
+shortAnswer: "Kapsle den Modellzugriff hinter einer eigenen fachlichen Schnittstelle, lass das Modell strukturierte Java-Objekte statt Freitext liefern und behandle den LLM-Provider wie jede andere externe API: mit Timeouts, Retries, Validierung und Monitoring. Spring AI liefert dafür die Bausteine, die Architekturentscheidungen nimmt es dir aber nicht ab."
 date: "2026-09-03"
 ogImage: "/images/og/llms-mit-spring-boot-integrieren.png"
 tags: ["Java", "Spring Boot", "Spring AI", "KI"]
@@ -21,25 +22,15 @@ service: "llm-integration-java"
 serviceText: "Du willst ein LLM in deine bestehende Spring-Boot-Anwendung integrieren, mit sauberer Architektur, Tests und Monitoring statt einer Demo? Ich setze das mit dir um, vom Architektur-Check bis zur Übergabe an dein Team."
 ---
 
-Large Language Models sind längst nicht mehr nur die Grundlage für Chatbots. Sie können Texte klassifizieren, Informationen extrahieren, Dokumente zusammenfassen, interne Wissensdatenbanken durchsuchen oder bestehende Geschäftsprozesse um natürliche Sprache erweitern.
+Large Language Models sind längst nicht mehr nur die Grundlage für Chatbots. Sie klassifizieren Texte, extrahieren Informationen, fassen Dokumente zusammen, durchsuchen interne Wissensdatenbanken oder erweitern bestehende Geschäftsprozesse um natürliche Sprache. Für Java-Teams stellt sich deshalb eine praktische Frage: Wie lässt sich ein LLM sinnvoll in eine bestehende Spring-Boot-Anwendung integrieren?
 
-Für Java Teams stellt sich deshalb zunehmend eine praktische Frage:
+Der erste API-Call ist schnell geschrieben. Eine produktionsreife LLM-Integration in Spring Boot braucht aber deutlich mehr: Modellzugriffe müssen gekapselt werden, Prompts gehören nicht in Controller, Antworten sollten strukturiert verarbeitet werden, und Timeouts, Kosten, Observability und Fehlerbehandlung gehören von Anfang an dazu. In diesem Artikel zeige ich, wie ich eine LLM-Anwendung mit Spring Boot strukturiere und warum Spring AI dabei eine nützliche Abstraktionsschicht für bestehende Java-Backends ist.
 
-Wie lässt sich ein LLM sinnvoll in eine bestehende Spring Boot Anwendung integrieren?
+## Warum Spring Boot für LLM-Anwendungen interessant ist
 
-Technisch ist der erste API Call schnell geschrieben. Eine produktionsreife **Spring Boot LLM Integration** benötigt aber deutlich mehr. Modellzugriffe müssen gekapselt werden, Prompts gehören nicht in Controller, Antworten sollten möglichst strukturiert verarbeitet werden und Themen wie Timeouts, Kosten, Observability und Fehlerbehandlung müssen von Anfang an berücksichtigt werden.
+Viele Unternehmen betreiben bereits umfangreiche Systeme auf Basis von Java und Spring Boot. Darin stecken Geschäftslogik, Datenbankzugriffe, REST-APIs, Authentifizierung, Messaging und Monitoring. Eine neue KI-Funktion muss deshalb nicht als separate Python-Anwendung entstehen. Oft ist es sinnvoller, das LLM dort einzubinden, wo die Fachlogik bereits liegt.
 
-In diesem Artikel zeige ich, wie ich eine **LLM Java Anwendung** mit Spring Boot strukturieren würde und warum Spring AI dabei eine interessante Abstraktionsschicht für bestehende Java Backends darstellt.
-
-## Warum Spring Boot für LLM Anwendungen interessant ist
-
-Viele Unternehmen besitzen bereits umfangreiche Systeme auf Basis von Java und Spring Boot.
-
-Darin befinden sich Geschäftslogik, Datenbankzugriffe, REST APIs, Authentifizierung, Messaging und Monitoring. Eine neue AI Funktion muss deshalb nicht zwangsläufig als separate Python Anwendung entstehen.
-
-In vielen Fällen ist es sinnvoller, das LLM dort einzubinden, wo sich die bestehende Fachlogik bereits befindet.
-
-Eine typische Architektur kann beispielsweise so aussehen:
+Eine typische Architektur kann so aussehen:
 
 ```text
 Frontend
@@ -57,31 +48,17 @@ Spring AI ChatClient
 LLM Provider
 ```
 
-Der entscheidende Punkt ist dabei die Trennung der Verantwortlichkeiten.
+Entscheidend ist die Trennung der Verantwortlichkeiten. Das Sprachmodell ist keine neue Anwendungsschicht, die plötzlich die Geschäftslogik übernimmt. Es ist eine externe technische Abhängigkeit, ähnlich wie ein Payment-Provider, eine Suchmaschine oder eine andere externe API. Diese Sichtweise vereinfacht die Architektur erheblich.
 
-Das Sprachmodell ist keine neue Anwendungsschicht, die plötzlich sämtliche Geschäftslogik übernimmt. Es ist zunächst eine externe technische Abhängigkeit, ähnlich wie ein Payment Provider, eine Suchmaschine oder eine andere externe API.
+## Spring AI als Abstraktionsschicht
 
-Diese Sichtweise hilft enorm bei der Architektur.
+Spring AI ist das Projekt des Spring-Ökosystems für generative KI. Es abstrahiert verschiedene Modellanbieter und bringt Bausteine für Chat Models, Embeddings, Vector Stores, Tool Calling, RAG, Chat Memory und Observability mit. Der `ChatClient` bietet eine Fluent API für Chat-Modelle und unterstützt synchrone wie Streaming-Aufrufe ([Spring AI Doku](https://docs.spring.io/spring-ai/reference/)).
 
-## Was ist Spring AI?
-
-Spring AI ist ein Projekt aus dem Spring Ökosystem, das generative AI Funktionen in Spring Anwendungen integrieren soll.
-
-Dafür stellt das Framework Abstraktionen für verschiedene Modellanbieter sowie Funktionen wie Chat Models, Embeddings, Vector Stores, Tool Calling, RAG, Chat Memory und Observability bereit. Der `ChatClient` bietet dabei eine Fluent API für die Kommunikation mit Chat Modellen und unterstützt sowohl synchrone als auch Streaming Aufrufe ([Spring AI Doku](https://docs.spring.io/spring-ai/reference/)).
-
-Der Vorteil besteht vor allem darin, dass eine LLM Integration in Java stärker den bekannten Spring Konventionen folgt.
-
-Statt für jeden Provider eine komplett eigene Integration aufzubauen, arbeitet die Anwendung gegen eine gemeinsame Abstraktion.
-
-Das bedeutet allerdings nicht, dass jedes Modell identisch funktioniert. Unterschiede bei Modellen, Kontextfenstern, Tool Calling, strukturierten Antworten und Kosten bleiben weiterhin relevant.
-
-Die Abstraktion reduziert technische Kopplung. Sie beseitigt aber nicht die Eigenschaften des jeweiligen Providers.
+Für diesen Artikel zählt vor allem eins: Die Anwendung arbeitet gegen eine gemeinsame Abstraktion statt gegen die API eines einzelnen Providers, und die Integration folgt den bekannten Spring-Konventionen. Unterschiede zwischen Modellen bei Kontextfenstern, Tool Calling, strukturierten Antworten und Kosten bleiben trotzdem bestehen. Die Abstraktion reduziert die technische Kopplung, sie beseitigt nicht die Eigenschaften des jeweiligen Providers. Wie sich Spring AI von LangChain4j unterscheidet, beschreibe ich im [Vergleich der beiden Frameworks](/blog/spring-ai-vs-langchain4j).
 
 ## Spring AI in Spring Boot einrichten
 
-Für OpenAI stellt Spring AI einen eigenen Spring Boot Starter bereit.
-
-Zum aktuellen **Spring AI Setup** gehört beispielsweise folgende Maven Dependency:
+Für OpenAI stellt Spring AI einen eigenen Spring-Boot-Starter bereit. Zum aktuellen Setup gehört diese Maven-Dependency:
 
 ```xml
 <dependency>
@@ -90,11 +67,9 @@ Zum aktuellen **Spring AI Setup** gehört beispielsweise folgende Maven Dependen
 </dependency>
 ```
 
-Die Versionen der Spring AI Module sollten über das offizielle BOM verwaltet werden. Spring AI 2.0.x ist laut aktueller Dokumentation für Spring Boot 4.0.x und 4.1.x vorgesehen.
+Die Versionen der Spring-AI-Module verwaltest du am besten über das offizielle BOM. Spring AI 2.0.x ist laut aktueller Dokumentation für Spring Boot 4.0.x und 4.1.x vorgesehen.
 
-Der API Key sollte natürlich nicht direkt in der Anwendung hinterlegt werden.
-
-Eine mögliche Konfiguration sieht beispielsweise so aus:
+Der API-Key gehört nicht in den Code. Eine mögliche Konfiguration:
 
 ```yaml
 spring:
@@ -103,19 +78,17 @@ spring:
       api-key: ${OPENAI_API_KEY}
 ```
 
-Der eigentliche Schlüssel kommt anschließend aus einer Umgebungsvariable oder einem Secret Management System.
+Der eigentliche Schlüssel kommt aus einer Umgebungsvariable oder einem Secret-Management-System:
 
 ```bash
 export OPENAI_API_KEY=...
 ```
 
-Damit kann Spring Boot die benötigten Komponenten automatisch konfigurieren.
+Damit konfiguriert Spring Boot die benötigten Komponenten automatisch.
 
-## Der erste LLM Aufruf mit ChatClient
+## Der erste LLM-Aufruf mit ChatClient
 
-Spring AI stellt mit `ChatClient` eine relativ kompakte API zur Verfügung.
-
-Ein einfacher Service könnte beispielsweise folgendermaßen aussehen:
+Mit dem `ChatClient` ist ein erster Aufruf kompakt. Ein einfacher Service kann so aussehen:
 
 ```java
 @Service
@@ -137,13 +110,7 @@ public class AiService {
 }
 ```
 
-Das funktioniert.
-
-Für eine echte Anwendung würde ich allerdings nicht bei dieser Struktur bleiben.
-
-Der häufigste Fehler bei neuen **Generative AI Java** Anwendungen besteht darin, dass der LLM Zugriff direkt über die gesamte Codebasis verteilt wird.
-
-Dann entstehen schnell Controller wie dieser:
+Das funktioniert, für eine echte Anwendung würde ich aber nicht bei dieser Struktur bleiben. Der häufigste Fehler in neuen Java-Anwendungen mit generativer KI ist, dass der LLM-Zugriff über die gesamte Codebasis verteilt wird. Dann entstehen schnell Controller wie dieser:
 
 ```java
 @PostMapping("/generate")
@@ -156,15 +123,11 @@ public String generate(@RequestBody String text) {
 }
 ```
 
-Für einen Proof of Concept ist das akzeptabel.
-
-Für eine langfristig wartbare Anwendung ist es problematisch.
+Für einen Proof of Concept ist das akzeptabel, für eine langfristig wartbare Anwendung nicht.
 
 ## Eine bessere Architektur für Spring Boot und LLMs
 
-Ich würde die AI Integration ähnlich behandeln wie jede andere externe Infrastrukturkomponente.
-
-Eine mögliche Paketstruktur könnte so aussehen:
+Ich behandle die KI-Integration wie jede andere externe Infrastrukturkomponente. Eine mögliche Paketstruktur:
 
 ```text
 com.example.application
@@ -183,9 +146,7 @@ com.example.application
     └── AiConfiguration
 ```
 
-Der Application Service kennt dann nicht zwangsläufig Spring AI.
-
-Stattdessen definieren wir eine eigene Schnittstelle:
+Der Application Service muss Spring AI dann nicht kennen. Stattdessen definieren wir eine eigene Schnittstelle:
 
 ```java
 public interface TextAnalyzer {
@@ -194,7 +155,7 @@ public interface TextAnalyzer {
 }
 ```
 
-Die technische Implementierung verwendet Spring AI:
+Erst die technische Implementierung verwendet Spring AI:
 
 ```java
 @Component
@@ -213,19 +174,11 @@ public class SpringAiTextAnalyzer implements TextAnalyzer {
 }
 ```
 
-Damit bleibt die Fachlogik unabhängig vom konkreten AI Framework.
-
-Das bringt mehrere Vorteile.
-
-Tests werden einfacher. Der LLM Provider kann ausgetauscht werden. Prompt Logik bleibt an einer definierten Stelle. Außerdem verhindert die Struktur, dass Spring AI APIs unkontrolliert in der gesamten Anwendung auftauchen.
+So bleibt die Fachlogik unabhängig vom konkreten KI-Framework, und das hat mehrere Vorteile: Tests werden einfacher, der LLM-Provider lässt sich austauschen, die Prompt-Logik liegt an einer definierten Stelle, und Spring-AI-APIs tauchen nicht unkontrolliert in der gesamten Anwendung auf.
 
 ## Prompts gehören nicht in den Controller
 
-Prompts sind ein Teil der Anwendungslogik.
-
-Deshalb würde ich längere System Prompts nicht direkt innerhalb eines REST Controllers definieren.
-
-Stattdessen kann beispielsweise eine eigene `PromptFactory` verwendet werden:
+Prompts sind Teil der Anwendungslogik. Längere System-Prompts definiere ich deshalb nicht in einem REST-Controller, sondern zum Beispiel in einer eigenen `PromptFactory`:
 
 ```java
 @Component
@@ -245,19 +198,11 @@ public class PromptFactory {
 }
 ```
 
-Bei komplexeren Anwendungen können Prompts auch als externe Ressourcen verwaltet werden.
+In komplexeren Anwendungen können Prompts auch als externe Ressourcen verwaltet werden. Dann lassen sie sich leichter versionieren, testen und ändern. Gerade in größeren Java-Anwendungen mit KI wird Prompt-Management schnell zu einem eigenen Thema.
 
-Dadurch lassen sie sich leichter versionieren, testen und verändern.
+### System-Prompt und User-Input voneinander trennen
 
-Gerade in größeren **Java AI Applications** wird Prompt Management schnell zu einem eigenen Thema.
-
-### System Prompt und User Input voneinander trennen
-
-Noch besser ist es, Instruktionen und Benutzereingaben nicht einfach zu einem großen String zusammenzukleben.
-
-Spring AI unterscheidet zwischen verschiedenen Message Typen. Über `ChatClient` können unter anderem System und User Messages separat definiert werden.
-
-Beispielsweise:
+Noch besser ist es, Instruktionen und Benutzereingaben nicht zu einem großen String zusammenzukleben. Spring AI unterscheidet verschiedene Message-Typen, über den `ChatClient` lassen sich unter anderem System- und User-Messages getrennt definieren:
 
 ```java
 String result = chatClient
@@ -274,17 +219,11 @@ String result = chatClient
         .content();
 ```
 
-Diese Trennung macht die Intention des Prompts deutlich klarer.
+Diese Trennung macht die Absicht des Prompts klarer. Sie wird außerdem wichtig, sobald Eingaben aus externen Quellen kommen.
 
-Sie ist außerdem wichtig, wenn Eingaben später aus externen Quellen kommen.
+## Vermeide unstrukturierte LLM-Antworten
 
-## Vermeide unstrukturierte LLM Antworten
-
-Ein weiterer häufiger Fehler besteht darin, das Modell ausschließlich Text produzieren zu lassen und diesen Text anschließend manuell zu parsen.
-
-Angenommen, eine Anwendung soll Support Nachrichten klassifizieren.
-
-Das Modell soll liefern:
+Ein weiterer häufiger Fehler: Das Modell produziert nur Text, und die Anwendung parst diesen Text anschließend von Hand. Angenommen, eine Anwendung soll Support-Nachrichten klassifizieren, und das Modell liefert:
 
 ```text
 Kategorie: BILLING
@@ -292,13 +231,7 @@ Priorität: HIGH
 Zusammenfassung: Kunde meldet eine doppelte Abbuchung.
 ```
 
-Anschließend versucht Java mit String Operationen, die einzelnen Werte herauszufiltern.
-
-Das funktioniert so lange, bis das Modell seine Formatierung verändert.
-
-Deutlich robuster sind strukturierte Antworten.
-
-Wir definieren beispielsweise:
+Danach versucht der Java-Code, die einzelnen Werte mit String-Operationen herauszufiltern. Das funktioniert genau so lange, bis das Modell seine Formatierung ändert. Deutlich robuster sind strukturierte Antworten. Wir definieren zum Beispiel:
 
 ```java
 public record TicketClassification(
@@ -310,11 +243,7 @@ public record TicketClassification(
 }
 ```
 
-Anschließend kann das Ergebnis direkt als Java Objekt verarbeitet werden.
-
-Spring AI unterstützt die Konvertierung von Modellantworten in strukturierte Typen und aktuelle Versionen können zusätzlich providerseitige Structured Outputs sowie Schema Validierung einsetzen.
-
-Konzeptionell sieht das so aus:
+Das Ergebnis lässt sich dann direkt als Java-Objekt verarbeiten. Spring AI konvertiert Modellantworten in strukturierte Typen, und aktuelle Versionen können zusätzlich providerseitige Structured Outputs und Schema-Validierung nutzen. Konzeptionell sieht das so aus:
 
 ```java
 TicketClassification result = chatClient
@@ -327,9 +256,7 @@ TicketClassification result = chatClient
         .entity(TicketClassification.class);
 ```
 
-Das ist für Backend Anwendungen ein entscheidender Unterschied.
-
-Das LLM liefert dann nicht einfach Text für einen Benutzer. Es wird Bestandteil eines maschinenlesbaren Workflows.
+Für Backend-Anwendungen ist das ein entscheidender Unterschied: Das LLM liefert nicht mehr nur Text für einen Menschen, sondern wird Teil eines maschinenlesbaren Workflows.
 
 ## Das LLM sollte keine Geschäftsregeln ersetzen
 
@@ -337,15 +264,13 @@ Eine der wichtigsten Architekturentscheidungen lautet:
 
 > Welche Entscheidungen darf das Modell treffen und welche nicht?
 
-Angenommen, ein LLM analysiert eine Kundenanfrage.
-
-Das Modell kann beispielsweise feststellen:
+Angenommen, ein LLM analysiert eine Kundenanfrage und stellt fest:
 
 ```text
 Intent: CANCEL_SUBSCRIPTION
 ```
 
-Die eigentliche Kündigung sollte anschließend aber weiterhin deterministische Java Logik ausführen.
+Die eigentliche Kündigung führt anschließend weiterhin deterministische Java-Logik aus:
 
 ```java
 if (classification.intent() == CANCEL_SUBSCRIPTION) {
@@ -353,33 +278,17 @@ if (classification.intent() == CANCEL_SUBSCRIPTION) {
 }
 ```
 
-So bleibt klar definiert, welcher Teil probabilistisch und welcher Teil deterministisch ist.
+So bleibt klar, welcher Teil probabilistisch und welcher deterministisch ist: Das LLM interpretiert Sprache, die Anwendung führt Geschäftslogik aus. Diese Trennung ist besonders wichtig bei finanziellen, sicherheitskritischen oder anderweitig sensiblen Prozessen.
 
-Das LLM interpretiert Sprache.
+## Tool Calling verbindet das LLM mit der Java-Anwendung
 
-Die Anwendung führt Geschäftslogik aus.
-
-Diese Trennung ist besonders wichtig bei finanziellen, sicherheitskritischen oder anderweitig sensiblen Prozessen.
-
-## Tool Calling verbindet das LLM mit der Java Anwendung
-
-Interessant wird die Integration, wenn das Modell nicht nur Text erzeugen, sondern Funktionen der Anwendung verwenden soll.
-
-Ein Benutzer könnte beispielsweise fragen:
+Interessant wird die Integration, wenn das Modell nicht nur Text erzeugt, sondern Funktionen der Anwendung nutzt. Ein Benutzer fragt zum Beispiel:
 
 ```text
 Wie ist der Status meiner Bestellung 4711?
 ```
 
-Das LLM selbst kennt diesen Status natürlich nicht.
-
-Die Anwendung besitzt die Information aber möglicherweise über einen `OrderService`.
-
-Hier kommt Tool Calling ins Spiel.
-
-Das Modell erkennt, dass eine bestimmte Funktion benötigt wird. Die Java Anwendung führt diese Funktion aus und gibt das Ergebnis zurück.
-
-Spring AI besitzt dafür eine eigene Tool Calling API. Bei Verwendung von `ChatClient` kann der Tool Calling Ablauf über den integrierten `ToolCallingAdvisor` gesteuert werden ([Spring Blog](https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now/)).
+Das LLM kennt diesen Status nicht, die Anwendung hat ihn aber über einen `OrderService`. Hier kommt Tool Calling ins Spiel: Das Modell erkennt, dass es eine bestimmte Funktion braucht, die Java-Anwendung führt sie aus und gibt das Ergebnis zurück. Spring AI hat dafür eine eigene Tool-Calling-API. Mit dem `ChatClient` steuert der integrierte `ToolCallingAdvisor` den Ablauf ([Spring Blog](https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now/)).
 
 Konzeptionell entsteht dadurch:
 
@@ -409,17 +318,11 @@ LLM
 Antwort
 ```
 
-Damit wird das Sprachmodell zu einer natürlichen Schnittstelle für bereits bestehende Java Services.
+Das Sprachmodell wird so zu einer natürlichsprachlichen Schnittstelle für bestehende Java-Services.
 
-### Tool Calling benötigt klare Grenzen
+### Tool Calling braucht klare Grenzen
 
-Tool Calling ist leistungsfähig, erhöht aber gleichzeitig das Risiko.
-
-Nicht jede Methode eines Spring Services sollte automatisch als Tool verfügbar sein.
-
-Stattdessen würde ich Tools bewusst klein halten.
-
-Beispielsweise:
+Tool Calling ist leistungsfähig, erhöht aber auch das Risiko. Nicht jede Methode eines Spring-Service sollte automatisch als Tool verfügbar sein. Ich halte Tools bewusst klein, also zum Beispiel:
 
 ```text
 getOrderStatus(orderId)
@@ -437,15 +340,7 @@ oder:
 executeCommand(command)
 ```
 
-Das Modell sollte nur genau die Aktionen aufrufen können, die für den jeweiligen Use Case erforderlich sind.
-
-Spring AI weist bei seiner Tool Resolution ebenfalls darauf hin, dass eine zu breite automatische Tool Verfügbarkeit sicherheitsrelevant sein kann.
-
-Hier gilt das gleiche Prinzip wie bei normalen APIs:
-
-**Least Privilege.**
-
-Ein AI Modell benötigt nicht mehr Rechte als unbedingt notwendig.
+Das Modell sollte genau die Aktionen aufrufen können, die der jeweilige Anwendungsfall erfordert. Auch Spring AI weist bei der Tool Resolution darauf hin, dass eine zu breite automatische Tool-Verfügbarkeit sicherheitsrelevant sein kann. Es gilt dasselbe Prinzip wie bei normalen APIs: **Least Privilege.** Ein KI-Modell bekommt nicht mehr Rechte als unbedingt nötig.
 
 <ServiceCta slug="service-as-software">
   Tool Calling ist auch die Grundlage für KI-Agenten, die wiederkehrende Aufgaben selbst erledigen: Anfragen bearbeiten, Dokumente prüfen, Berichte erstellen, angebunden an deine bestehenden Services und mit menschlicher Freigabe an kritischen Stellen.
@@ -453,15 +348,9 @@ Ein AI Modell benötigt nicht mehr Rechte als unbedingt notwendig.
 
 ## RAG für eigene Unternehmensdaten
 
-Ein LLM kennt nicht automatisch die internen Informationen eines Unternehmens.
+Ein LLM kennt die internen Informationen eines Unternehmens nicht. Soll die Anwendung Fragen zu Dokumentationen, Verträgen, Produkten oder internen Prozessen beantworten, kommt deshalb häufig **Retrieval Augmented Generation** zum Einsatz, kurz RAG. Dabei sucht die Anwendung zuerst relevante Informationen und übergibt sie zusammen mit der Benutzerfrage an das Modell.
 
-Wenn die Anwendung Fragen zu Dokumentationen, Verträgen, Produkten oder internen Prozessen beantworten soll, wird deshalb häufig **Retrieval Augmented Generation** eingesetzt.
-
-Kurz RAG.
-
-Dabei werden relevante Informationen zunächst gesucht und anschließend zusammen mit der Benutzerfrage an das Modell übergeben.
-
-Eine typische Architektur sieht so aus:
+Eine typische Architektur:
 
 ```text
 User Question
@@ -482,30 +371,20 @@ Prompt + Context
 LLM
 ```
 
-Spring AI besitzt dafür Vector Store Abstraktionen und Advisors für typische RAG Abläufe. Der `QuestionAnswerAdvisor` implementiert beispielsweise ein einfaches RAG Muster, während `RetrievalAugmentationAdvisor` modularere Retrieval Abläufe ermöglicht ([Spring AI Doku](https://docs.spring.io/spring-ai/reference/)).
+Spring AI bringt dafür Vector-Store-Abstraktionen und Advisors für typische RAG-Abläufe mit. Der `QuestionAnswerAdvisor` implementiert ein einfaches RAG-Muster, der `RetrievalAugmentationAdvisor` ermöglicht modularere Retrieval-Abläufe ([Spring AI Doku](https://docs.spring.io/spring-ai/reference/)). So lässt sich eine bestehende Spring-Boot-Anwendung um semantische Suche oder dokumentenbasierte Fragen erweitern, ohne die Architektur neu aufzubauen. Wie das konkret aussieht, zeige ich Schritt für Schritt im [Spring AI RAG Tutorial mit PostgreSQL und pgvector](/blog/spring-ai-rag-java-tutorial).
 
-Damit kann eine bestehende Spring Boot Anwendung um semantische Suche oder dokumentenbasierte Fragen erweitert werden, ohne dass die gesamte Architektur neu aufgebaut werden muss.
+## Fehlerbehandlung bei externen LLM-APIs
 
-Wie das konkret aussieht, zeige ich Schritt für Schritt im [Spring AI RAG Tutorial mit PostgreSQL und pgvector](/blog/spring-ai-rag-java-tutorial).
-
-## Fehlerbehandlung bei externen LLM APIs
-
-Ein LLM Provider ist ein externer Service.
-
-Das bedeutet, dass dieselben Probleme auftreten können wie bei jeder anderen externen API:
+Ein LLM-Provider ist ein externer Service, und es können dieselben Probleme auftreten wie bei jeder anderen externen API:
 
 - Netzwerkfehler
 - Timeouts
 - Rate Limits
-- temporäre Provider Fehler
+- temporäre Provider-Fehler
 - ungültige Antworten
 - hohe Antwortzeiten
 
-Spring AI besitzt für Modellzugriffe konfigurierbare Retry Mechanismen. Für die OpenAI Integration können beispielsweise maximale Versuche und Backoff Verhalten konfiguriert werden.
-
-Trotzdem sollte nicht jeder Fehler automatisch zehnmal wiederholt werden.
-
-Bei produktiven Anwendungen würde ich klar definieren:
+Spring AI hat konfigurierbare Retry-Mechanismen für Modellzugriffe, für die OpenAI-Integration etwa die maximale Zahl der Versuche und das Backoff-Verhalten. Trotzdem sollte nicht jeder Fehler automatisch zehnmal wiederholt werden. Für produktive Anwendungen lege ich fest:
 
 - Welche Fehler sind transient?
 - Wie viele Retries sind sinnvoll?
@@ -513,21 +392,11 @@ Bei produktiven Anwendungen würde ich klar definieren:
 - Gibt es einen Fallback?
 - Was sieht der Benutzer bei einem Fehler?
 
-Besonders wichtig ist dabei die maximale Gesamtlaufzeit.
+Besonders wichtig ist die maximale Gesamtlaufzeit. Ein HTTP-Request sollte nicht minutenlang blockieren, nur weil mehrere KI-Aufrufe hintereinander fehlschlagen.
 
-Ein HTTP Request sollte nicht minutenlang blockieren, nur weil mehrere AI Requests hintereinander fehlschlagen.
+## LLM-Calls gehören nicht zwangsläufig in synchrone Requests
 
-## LLM Calls gehören nicht zwangsläufig in synchrone Requests
-
-Viele AI Aufgaben benötigen mehrere Sekunden.
-
-Für einen interaktiven Chat ist das meistens akzeptabel. Bei klassischen Backend Workflows kann es problematisch werden.
-
-Angenommen, 10.000 Produktbeschreibungen sollen automatisch kategorisiert werden.
-
-Dann würde ich nicht 10.000 Requests über einen REST Controller synchron ausführen.
-
-Sinnvoller wäre beispielsweise:
+Viele KI-Aufgaben dauern mehrere Sekunden. Für einen interaktiven Chat ist das meist akzeptabel, in klassischen Backend-Workflows kann es zum Problem werden. Sollen zum Beispiel 10.000 Produktbeschreibungen automatisch kategorisiert werden, würde ich nicht 10.000 Requests synchron über einen REST-Controller ausführen. Sinnvoller ist ein asynchroner Ablauf:
 
 ```text
 REST API
@@ -543,34 +412,15 @@ LLM
 Ergebnis speichern
 ```
 
-Damit lassen sich Last, Retries und Fehler deutlich besser kontrollieren.
-
-Die eigentliche LLM Integration in Java bleibt dieselbe. Nur die Ausführungsstrategie verändert sich.
+Damit lassen sich Last, Retries und Fehler deutlich besser kontrollieren. Die eigentliche LLM-Integration bleibt dieselbe, nur die Ausführungsstrategie ändert sich.
 
 ## Streaming für interaktive Anwendungen
 
-Für Chat Oberflächen kann Streaming die wahrgenommene Antwortzeit deutlich verbessern.
+In Chat-Oberflächen kann Streaming die wahrgenommene Antwortzeit deutlich verbessern: Statt auf das vollständige Ergebnis zu warten, gehen bereits generierte Teile direkt ans Frontend. Der `ChatClient` von Spring AI unterstützt synchrone wie Streaming-Aufrufe. In klassischen Backend-Prozessen setze ich Streaming dagegen nur ein, wenn es einen konkreten Nutzen bringt. Nicht jede KI-Integration braucht einen Chat.
 
-Anstatt darauf zu warten, dass das vollständige Ergebnis verfügbar ist, können bereits generierte Teile direkt zum Frontend übertragen werden.
+## Observability ist bei LLM-Anwendungen besonders wichtig
 
-Der `ChatClient` von Spring AI unterstützt sowohl synchrone als auch Streaming Modelle.
-
-Für klassische Backend Prozesse würde ich Streaming dagegen nur einsetzen, wenn es einen konkreten Nutzen gibt.
-
-Nicht jede AI Integration benötigt einen Chat.
-
-## Observability ist bei LLM Anwendungen besonders wichtig
-
-Bei normalen REST APIs beobachten wir Dinge wie:
-
-- Response Times
-- Error Rates
-- Throughput
-- externe Requests
-
-Für AI Anwendungen kommen weitere Dimensionen hinzu.
-
-Beispielsweise:
+Bei normalen REST-APIs beobachten wir Antwortzeiten, Fehlerraten, Durchsatz und externe Requests. Bei KI-Anwendungen kommen weitere Fragen hinzu:
 
 - Welches Modell wurde verwendet?
 - Wie lange dauert ein Modellaufruf?
@@ -578,44 +428,22 @@ Beispielsweise:
 - Welche Tools werden aufgerufen?
 - Wie häufig schlagen strukturierte Antworten fehl?
 
-Spring AI integriert sich dafür in die Observability Funktionen des Spring Ökosystems und stellt Metriken und Tracing unter anderem für `ChatClient`, `ChatModel`, `EmbeddingModel`, Advisors und Vector Stores bereit.
-
-Das ist für produktive Anwendungen wesentlich wichtiger, als es in vielen Tutorials wirkt.
-
-Ein LLM Call verursacht nicht nur Latenz.
-
-Er verursacht häufig auch direkte variable Kosten.
+Spring AI integriert sich dafür in die Observability-Funktionen des Spring-Ökosystems und liefert Metriken und Tracing unter anderem für `ChatClient`, `ChatModel`, `EmbeddingModel`, Advisors und Vector Stores. Für produktive Anwendungen ist das wichtiger, als es in vielen Tutorials wirkt, denn ein LLM-Call verursacht nicht nur Latenz, sondern häufig auch direkte variable Kosten.
 
 ## Kosten sollten Teil der Architektur sein
 
-Bei einer klassischen Java Methode ist es normalerweise irrelevant, ob sie 500 oder 5.000 Zeichen verarbeitet.
+Bei einer klassischen Java-Methode spielt es meist keine Rolle, ob sie 500 oder 5.000 Zeichen verarbeitet. Bei einem LLM-Request macht genau das einen Unterschied: Mehr Kontext bedeutet in der Regel mehr Tokens und damit höhere Kosten und längere Verarbeitung. Deshalb kläre ich früh:
 
-Bei einem LLM Request kann genau das einen Unterschied machen.
-
-Mehr Kontext bedeutet in der Regel mehr Tokens und damit potenziell höhere Kosten und längere Verarbeitung.
-
-Deshalb würde ich früh definieren:
-
-- Welche Informationen benötigt das Modell wirklich?
+- Welche Informationen braucht das Modell wirklich?
 - Wie groß dürfen Benutzereingaben sein?
 - Wie viele Dokumente werden bei RAG geladen?
-- Welches Modell ist für welchen Use Case notwendig?
+- Welches Modell ist für welchen Anwendungsfall nötig?
 
-Nicht jede Aufgabe benötigt das leistungsfähigste verfügbare Modell.
+Nicht jede Aufgabe braucht das leistungsfähigste verfügbare Modell. Eine einfache Klassifizierung übernimmt oft ein kleineres Modell, komplexere Aufgaben ein stärkeres. In größeren Systemen wird Model Routing deshalb zu einem eigenen Architekturthema.
 
-Eine einfache Klassifizierung kann möglicherweise von einem kleineren Modell übernommen werden, während komplexere Aufgaben ein stärkeres Modell benötigen.
+## LLM-Ergebnisse müssen validiert werden
 
-Model Routing kann deshalb bei größeren Systemen zu einem eigenen Architekturthema werden.
-
-## LLM Ergebnisse müssen validiert werden
-
-Ein Sprachmodell ist keine deterministische Funktion.
-
-Selbst mit einem sehr guten Prompt kann eine Antwort falsch, unvollständig oder unerwartet sein.
-
-Deshalb sollte die Anwendung LLM Ergebnisse niemals automatisch als korrekt betrachten.
-
-Bei strukturierten Ergebnissen kann beispielsweise validiert werden:
+Ein Sprachmodell ist keine deterministische Funktion. Selbst mit einem sehr guten Prompt kann eine Antwort falsch, unvollständig oder unerwartet sein. Die Anwendung sollte LLM-Ergebnisse deshalb nie automatisch als korrekt betrachten. Bei strukturierten Ergebnissen lässt sich zum Beispiel prüfen:
 
 ```java
 if (result.confidence() < 0.8) {
@@ -623,23 +451,11 @@ if (result.confidence() < 0.8) {
 }
 ```
 
-Noch besser ist eine Kombination aus technischer und fachlicher Validierung.
+Beachte dabei: `confidence` ist hier ein Wert, den das Modell selbst einschätzt. Er ist nicht kalibriert und taugt nur als grobes Signal. Verlässlicher ist die Kombination aus technischer und fachlicher Validierung. Die technische prüft etwa das JSON-Schema, die fachliche die Geschäftsregeln. Spring AI bietet für strukturierte Antworten inzwischen Schema-Validierung mit automatischen Wiederholungsversuchen, wenn eine Antwort nicht dem erwarteten Schema entspricht. Eine fachliche Validierung ersetzt das nicht.
 
-Technische Validierung prüft beispielsweise das JSON Schema.
+## LLM-Provider hinter einer eigenen Abstraktion kapseln
 
-Fachliche Validierung prüft Geschäftsregeln.
-
-Spring AI bietet für strukturierte Antworten inzwischen auch Schema Validierung mit automatischen Wiederholungsversuchen an, wenn eine Antwort nicht dem erwarteten Schema entspricht.
-
-Das ersetzt allerdings keine fachliche Validierung.
-
-## LLM Provider hinter einer eigenen Abstraktion kapseln
-
-Spring AI reduziert bereits die Abhängigkeit von konkreten Modellanbietern.
-
-Trotzdem würde ich bei größeren Anwendungen zusätzlich eine eigene fachliche Abstraktion definieren.
-
-Nicht:
+Spring AI reduziert bereits die Abhängigkeit von konkreten Modellanbietern. In größeren Anwendungen definiere ich trotzdem zusätzlich eine eigene fachliche Abstraktion. Also nicht:
 
 ```java
 public class CustomerController {
@@ -648,7 +464,7 @@ public class CustomerController {
 }
 ```
 
-Sondern beispielsweise:
+sondern zum Beispiel:
 
 ```java
 public interface SupportTicketClassifier {
@@ -657,45 +473,27 @@ public interface SupportTicketClassifier {
 }
 ```
 
-Der Rest der Anwendung muss dann weder wissen, dass OpenAI verwendet wird, noch dass Spring AI existiert.
+Der Rest der Anwendung muss dann weder wissen, dass OpenAI verwendet wird, noch dass es Spring AI gibt. Das erleichtert spätere Änderungen erheblich: Vielleicht nutzt die Anwendung heute OpenAI und morgen Azure OpenAI, Anthropic oder ein lokal betriebenes Modell. Vielleicht wird irgendwann sogar Spring AI selbst ausgetauscht. Die Fachlogik sollte davon möglichst wenig betroffen sein.
 
-Das macht spätere Änderungen deutlich einfacher.
+## Spring AI oder direkte OpenAI-Integration in Java?
 
-Vielleicht verwendet die Anwendung heute OpenAI und morgen Azure OpenAI, Anthropic oder ein lokal betriebenes Modell.
+Natürlich lässt sich OpenAI auch ohne Spring AI direkt aus Java ansprechen. Soll eine bestehende Spring-Boot-Anwendung aber um mehrere KI-Funktionen erweitert werden, bietet Spring AI handfeste Vorteile:
 
-Vielleicht wird Spring AI irgendwann vollständig ausgetauscht.
-
-Die Fachlogik sollte davon möglichst wenig betroffen sein.
-
-## Spring AI oder direkte OpenAI Java Integration?
-
-Natürlich kann eine **OpenAI Java Integration** auch ohne Spring AI umgesetzt werden.
-
-Wann würde ich trotzdem Spring AI einsetzen?
-
-Wenn eine bestehende Spring Boot Anwendung um mehrere Generative AI Funktionen erweitert werden soll, bietet Spring AI einige interessante Vorteile:
-
-- Integration in Spring Boot Auto Configuration
-- einheitliche Model APIs
+- Integration in die Auto-Configuration von Spring Boot
+- einheitliche Model-APIs
 - `ChatClient`
 - strukturierte Outputs
 - Tool Calling
-- RAG und Vector Store Integration
+- RAG und Vector-Store-Integration
 - Advisors
 - Observability
 - Unterstützung verschiedener Provider
 
-Spring AI ist besonders interessant, wenn AI nicht nur ein einzelner API Request bleibt, sondern ein dauerhafter Bestandteil der Backend Architektur werden soll.
-
-Für einen sehr kleinen Use Case kann eine direkte Provider Integration dagegen völlig ausreichend sein.
-
-Ein zusätzliches Framework ist kein Selbstzweck.
-
-Falls du an diesem Punkt noch zwischen den Java Frameworks schwankst, habe ich Spring AI und LangChain4j in einem [eigenen Vergleich](/blog/spring-ai-vs-langchain4j) gegenübergestellt.
+Spring AI lohnt sich besonders, wenn KI nicht ein einzelner API-Request bleibt, sondern dauerhafter Teil der Backend-Architektur wird. Für einen sehr kleinen Anwendungsfall reicht eine direkte Provider-Integration dagegen völlig aus. Ein zusätzliches Framework ist kein Selbstzweck. Falls du noch zwischen den Java-Frameworks schwankst: Spring AI und LangChain4j habe ich in einem [eigenen Vergleich](/blog/spring-ai-vs-langchain4j) gegenübergestellt.
 
 ## Eine mögliche produktionsnahe Architektur
 
-Für eine größere Spring Boot LLM Anwendung könnte eine Architektur beispielsweise folgendermaßen aussehen:
+Für eine größere LLM-Anwendung mit Spring Boot könnte die Architektur so aussehen:
 
 ```text
                          ┌─────────────────┐
@@ -734,73 +532,59 @@ Für eine größere Spring Boot LLM Anwendung könnte eine Architektur beispiels
                                                         Java Services
 ```
 
-Der entscheidende Punkt ist nicht die konkrete Anzahl der Schichten.
-
-Wichtig ist, dass das LLM sauber in die bestehende Architektur eingebettet wird.
+Entscheidend ist nicht die genaue Zahl der Schichten, sondern dass das LLM sauber in die bestehende Architektur eingebettet ist.
 
 ## Best Practices für Spring Boot und LLMs
 
-Wenn ich heute eine neue AI Funktion in einer Java Anwendung implementieren würde, wären folgende Punkte für mich besonders wichtig:
+Wenn ich heute eine neue KI-Funktion in einer Java-Anwendung umsetze, sind mir diese Punkte besonders wichtig:
 
-1. **LLM Zugriff kapseln.** Der `ChatClient` sollte nicht quer durch Controller und Services verteilt werden.
-2. **Prompts versionierbar halten.** Prompts sind Teil der Anwendungslogik und sollten entsprechend behandelt werden.
-3. **Strukturierte Outputs bevorzugen.** Java Anwendungen arbeiten besser mit definierten Objekten als mit frei formatiertem Text.
-4. **LLMs nicht für deterministische Logik verwenden.** Berechnungen, Berechtigungen und harte Geschäftsregeln gehören weiterhin in Java.
-5. **Tool Zugriffe begrenzen.** Ein Modell sollte nur die Funktionen verwenden dürfen, die für seinen Use Case benötigt werden.
-6. **Timeouts und Retries definieren.** Ein LLM Provider bleibt ein externer Dienst und kann ausfallen.
-7. **Observability von Anfang an integrieren.** Latenz, Fehler und Kosten sollten sichtbar sein.
-8. **Antworten validieren.** LLM Output ist niemals automatisch vertrauenswürdig.
-9. **RAG nur einsetzen, wenn zusätzlicher Kontext benötigt wird.** Nicht jede AI Funktion braucht eine Vector Database.
-10. **AI als Teil der Architektur betrachten.** Der schwierige Teil einer produktiven AI Anwendung ist selten der erste API Call.
+1. **LLM-Zugriff kapseln.** Der `ChatClient` sollte nicht quer durch Controller und Services verteilt sein.
+2. **Prompts versionierbar halten.** Prompts sind Teil der Anwendungslogik und werden entsprechend behandelt.
+3. **Strukturierte Outputs bevorzugen.** Java-Anwendungen arbeiten besser mit definierten Objekten als mit frei formatiertem Text.
+4. **LLMs nicht für deterministische Logik verwenden.** Berechnungen, Berechtigungen und harte Geschäftsregeln bleiben in Java.
+5. **Tool-Zugriffe begrenzen.** Ein Modell darf nur die Funktionen verwenden, die sein Anwendungsfall braucht.
+6. **Timeouts und Retries definieren.** Ein LLM-Provider bleibt ein externer Dienst und kann ausfallen.
+7. **Observability von Anfang an integrieren.** Latenz, Fehler und Kosten müssen sichtbar sein.
+8. **Antworten validieren.** LLM-Output ist nie automatisch vertrauenswürdig.
+9. **RAG nur einsetzen, wenn zusätzlicher Kontext nötig ist.** Nicht jede KI-Funktion braucht eine Vektordatenbank.
+10. **KI als Teil der Architektur betrachten.** Der schwierige Teil einer produktiven KI-Anwendung ist selten der erste API-Call.
 
 ## Fazit
 
-Eine **Spring Boot LLM Integration** kann erstaunlich einfach beginnen.
+Eine LLM-Integration in Spring Boot kann erstaunlich einfach beginnen: Ein `ChatClient`, ein Prompt und ein Modell reichen, um in wenigen Minuten die erste Antwort zu erzeugen. Der Unterschied zwischen einer Demo und einer produktionsreifen Anwendung entsteht erst danach. Eine robuste Architektur braucht klare Verantwortlichkeiten, strukturierte Ergebnisse, Fehlerbehandlung, Observability, Sicherheitsgrenzen und eine saubere Trennung zwischen probabilistischer KI-Logik und deterministischer Geschäftslogik.
 
-Ein `ChatClient`, ein Prompt und ein Modell reichen aus, um innerhalb weniger Minuten die erste Antwort zu generieren.
-
-Der Unterschied zwischen einer Demo und einer produktionsreifen Anwendung entsteht allerdings erst danach.
-
-Eine robuste LLM Java Architektur braucht klare Verantwortlichkeiten, strukturierte Ergebnisse, Fehlerbehandlung, Observability, Sicherheitsgrenzen und eine saubere Trennung zwischen probabilistischer AI Logik und deterministischer Geschäftslogik.
-
-Spring AI bietet dafür inzwischen viele Bausteine, die sich gut in bestehende Spring Anwendungen integrieren lassen.
-
-Das Framework nimmt einem jedoch nicht die Architekturentscheidungen ab.
-
-Und genau darin liegt aus meiner Sicht der wichtigste Punkt:
-
-Ein LLM sollte nicht zum Mittelpunkt einer Spring Boot Anwendung werden. Es sollte ein gut gekapselter Bestandteil einer sauberen Backend Architektur sein.
+Spring AI liefert dafür inzwischen viele Bausteine, die sich gut in bestehende Spring-Anwendungen einfügen. Die Architekturentscheidungen nimmt das Framework dir aber nicht ab. Und genau darin liegt für mich der wichtigste Punkt: Ein LLM sollte nicht zum Mittelpunkt einer Spring-Boot-Anwendung werden, sondern ein gut gekapselter Bestandteil einer sauberen Backend-Architektur sein.
 
 ## Häufig gestellte Fragen zu LLMs und Spring Boot
 
-### Wie integriere ich ein LLM in eine Spring Boot Anwendung?
+### Wie integriere ich ein LLM in eine Spring-Boot-Anwendung?
 
-Der einfachste Weg führt über Spring AI. Nach dem Einbinden des passenden Starters und der Konfiguration des API Keys kann der `ChatClient` per Dependency Injection verwendet werden. Für produktive Anwendungen sollte der Modellzugriff anschließend hinter einer eigenen fachlichen Schnittstelle gekapselt werden, damit Spring AI APIs nicht in der gesamten Codebasis auftauchen.
+Der einfachste Weg führt über Spring AI. Nach dem Einbinden des passenden Starters und der Konfiguration des API-Keys steht der `ChatClient` per Dependency Injection zur Verfügung. Für produktive Anwendungen solltest du den Modellzugriff anschließend hinter einer eigenen fachlichen Schnittstelle kapseln, damit Spring-AI-APIs nicht in der gesamten Codebasis auftauchen.
 
-### Brauche ich für LLM Anwendungen zwingend Python?
+### Brauche ich für LLM-Anwendungen zwingend Python?
 
-Nein. Für viele Anwendungsfälle ist Python keine Voraussetzung mehr. LLM Integration, strukturierte Outputs, Tool Calling, Embeddings und RAG lassen sich direkt in einer Java Anwendung umsetzen. Gerade wenn Geschäftslogik, Datenzugriff und Authentifizierung bereits in Spring Boot liegen, ist eine Java Integration meistens der kürzere Weg.
+Nein. Für viele Anwendungsfälle ist Python keine Voraussetzung mehr. LLM-Integration, strukturierte Outputs, Tool Calling, Embeddings und RAG lassen sich direkt in einer Java-Anwendung umsetzen. Gerade wenn Geschäftslogik, Datenzugriff und Authentifizierung bereits in Spring Boot liegen, ist die Integration in Java meist der kürzere Weg.
 
 ### Wie bekomme ich strukturierte Antworten aus einem LLM?
 
-Statt Text manuell zu parsen, sollte ein Java Typ definiert und die Antwort direkt in dieses Objekt konvertiert werden. Spring AI unterstützt dafür Structured Outputs, beispielsweise über `entity()` am `ChatClient`. Aktuelle Versionen können zusätzlich providerseitige Structured Outputs und Schema Validierung nutzen.
+Statt Text von Hand zu parsen, definierst du einen Java-Typ und lässt die Antwort direkt in dieses Objekt konvertieren. Spring AI unterstützt dafür Structured Outputs, zum Beispiel über `entity()` am `ChatClient`. Aktuelle Versionen können zusätzlich providerseitige Structured Outputs und Schema-Validierung nutzen.
 
-### Wo sollten Prompts in einer Spring Boot Anwendung liegen?
+### Wo sollten Prompts in einer Spring-Boot-Anwendung liegen?
 
-Prompts gehören zur Anwendungslogik und nicht in einen REST Controller. Sinnvoll ist eine eigene Komponente, etwa eine `PromptFactory`, oder die Verwaltung als externe Ressource. Dadurch bleiben Prompts versionierbar, testbar und an einer definierten Stelle.
+Prompts gehören zur Anwendungslogik und nicht in einen REST-Controller. Sinnvoll ist eine eigene Komponente, etwa eine `PromptFactory`, oder die Verwaltung als externe Ressource. So bleiben Prompts versionierbar, testbar und an einer definierten Stelle.
 
 ### Ist Tool Calling ein Sicherheitsrisiko?
 
-Tool Calling erweitert die Angriffsfläche, weil ein Modell Funktionen der Anwendung auslösen kann. Deshalb gilt das Prinzip Least Privilege: Tools sollten fachlich eng geschnitten sein, etwa `getOrderStatus(orderId)` statt generischer Methoden wie `executeDatabaseQuery(sql)`. Berechtigungsprüfungen bleiben weiterhin Aufgabe der Anwendung.
+Tool Calling vergrößert die Angriffsfläche, weil ein Modell Funktionen der Anwendung auslösen kann. Deshalb gilt das Prinzip Least Privilege: Tools sollten fachlich eng geschnitten sein, etwa `getOrderStatus(orderId)` statt generischer Methoden wie `executeDatabaseQuery(sql)`. Berechtigungsprüfungen bleiben Aufgabe der Anwendung.
 
 ### Wann brauche ich RAG?
 
-RAG wird benötigt, wenn das Modell auf Informationen zugreifen soll, die es nicht kennt, beispielsweise interne Dokumentationen, Verträge oder Produktdaten. Für Aufgaben wie Klassifizierung, Extraktion oder Zusammenfassung eines mitgelieferten Textes ist keine Vector Database erforderlich.
+RAG brauchst du, wenn das Modell auf Informationen zugreifen soll, die es nicht kennt, zum Beispiel interne Dokumentationen, Verträge oder Produktdaten. Für Klassifizierung, Extraktion oder die Zusammenfassung eines mitgelieferten Textes ist keine Vektordatenbank nötig.
 
-### Wie gehe ich mit Timeouts und Fehlern bei LLM Providern um?
+### Wie gehe ich mit Timeouts und Fehlern bei LLM-Providern um?
 
-Ein LLM Provider ist eine externe Abhängigkeit und kann ausfallen oder langsam antworten. Neben den konfigurierbaren Retry Mechanismen von Spring AI sollte vor allem eine maximale Gesamtlaufzeit definiert werden. Außerdem sollte klar sein, welche Fehler transient sind, ob es einen Fallback gibt und was der Benutzer im Fehlerfall sieht.
+Ein LLM-Provider ist eine externe Abhängigkeit und kann ausfallen oder langsam antworten. Neben den konfigurierbaren Retry-Mechanismen von Spring AI solltest du vor allem eine maximale Gesamtlaufzeit festlegen. Außerdem sollte klar sein, welche Fehler transient sind, ob es einen Fallback gibt und was der Benutzer im Fehlerfall sieht.
 
-### Sollten LLM Aufrufe synchron im Request laufen?
+### Sollten LLM-Aufrufe synchron im Request laufen?
 
-Für interaktive Anwendungen ist ein synchroner Aufruf meistens akzeptabel, teilweise ergänzt durch Streaming. Für Massenverarbeitung ist eine asynchrone Variante über Jobs und eine Message Queue deutlich robuster, weil Last, Retries und Fehler besser kontrolliert werden können.
+Für interaktive Anwendungen ist ein synchroner Aufruf meist akzeptabel, oft ergänzt durch Streaming. Für Massenverarbeitung ist eine asynchrone Variante über Jobs und eine Message Queue deutlich robuster, weil sich Last, Retries und Fehler besser kontrollieren lassen.

@@ -1,7 +1,8 @@
 ---
-title: "Spring AI vs. LangChain4j: Welches Java AI Framework ist 2026 die bessere Wahl?"
+title: "Spring AI vs. LangChain4j: Welches Java-AI-Framework ist 2026 die bessere Wahl?"
 metaTitle: "Spring AI vs. LangChain4j: Java AI Vergleich 2026"
-description: "Spring AI oder LangChain4j? Erfahre, welches Java AI Framework 2026 besser zu Spring Boot, RAG, Tool Calling und modernen LLM Anwendungen passt."
+description: "Spring AI oder LangChain4j? Erfahre, welches Java-AI-Framework 2026 besser zu Spring Boot, RAG, Tool Calling und modernen LLM-Anwendungen passt."
+shortAnswer: "Für eine bestehende Spring-Boot-Anwendung ist Spring AI meist die naheliegende Wahl, weil es sich wie jedes andere Spring-Modul einfügt. LangChain4j lohnt sich vor allem außerhalb von Spring, etwa mit Quarkus, oder wenn du LLM-Funktionen deklarativ als AI Services modellieren willst. RAG, Tool Calling und MCP beherrschen beide, entscheidend ist die Architektur deiner Anwendung, nicht die Feature-Liste."
 date: "2026-08-23"
 ogImage: "/images/og/spring-ai-vs-langchain4j.png"
 tags: ["Java", "Spring AI", "LangChain4j", "KI"]
@@ -21,55 +22,35 @@ service: "llm-integration-java"
 serviceText: "Du willst Spring AI oder LangChain4j in deiner Anwendung einsetzen und suchst Unterstützung bei Architektur und Umsetzung? Ich integriere LLMs direkt in dein Java-Backend, mit dem Framework, das zu deinem Stack passt."
 ---
 
-Generative AI ist längst kein reines Python Thema mehr. Wer heute eine bestehende Java Anwendung um Large Language Models, Retrieval Augmented Generation oder AI Tools erweitern möchte, kann innerhalb des Java Ökosystems bleiben.
+Generative KI ist längst kein reines Python-Thema mehr. Wer eine bestehende Java-Anwendung um Large Language Models, Retrieval Augmented Generation oder KI-Tools erweitern will, kann im Java-Ökosystem bleiben. Zwei Frameworks stehen dabei besonders häufig zur Auswahl: **Spring AI und LangChain4j**. Beide verbinden Java-Anwendungen mit LLMs, abstrahieren verschiedene Modellanbieter und unterstützen Konzepte wie RAG, Tool Calling und agentische Workflows.
 
-Zwei Frameworks stehen dabei besonders häufig zur Auswahl: **Spring AI und LangChain4j**.
-
-Beide lösen auf den ersten Blick ähnliche Probleme. Sie verbinden Java Anwendungen mit LLMs, abstrahieren verschiedene Modellanbieter und unterstützen moderne Konzepte wie RAG, Tool Calling und agentische Workflows.
-
-Trotzdem verfolgen sie unterschiedliche Ansätze.
-
-Spring AI orientiert sich stark an den bekannten Konzepten des Spring Ökosystems. LangChain4j versteht sich dagegen als Java spezifische AI Library, die auch außerhalb von Spring eingesetzt werden kann.
-
-Welcher Ansatz ist also besser?
-
-In diesem **Spring AI vs. LangChain4j Vergleich** schauen wir uns beide Frameworks genauer an. Neben den Features geht es vor allem um die Frage, welches Framework sich für welche Architektur und welchen Anwendungsfall eignet.
+Trotzdem verfolgen sie unterschiedliche Ansätze. Spring AI orientiert sich an den bekannten Konzepten des Spring-Ökosystems, LangChain4j versteht sich als Java-spezifische KI-Bibliothek, die auch außerhalb von Spring funktioniert. In diesem Vergleich geht es deshalb weniger um Feature-Listen als um die Frage, welches Framework zu welcher Architektur und welchem Anwendungsfall passt.
 
 ## Spring AI vs. LangChain4j im Überblick
 
-Wer nur die Feature Listen betrachtet, könnte zunächst den Eindruck bekommen, dass sich Spring AI und LangChain4j kaum unterscheiden.
-
-Beide Frameworks unterstützen inzwischen viele der Bausteine, die für moderne Generative AI Anwendungen benötigt werden.
+Auf der Feature-Ebene liegen beide Frameworks inzwischen nah beieinander. Provider-Abstraktion, RAG, Tool Calling, Vector Stores, Chat Memory, Structured Outputs und MCP-Unterstützung bringen beide mit. Die Tabelle zeigt deshalb nur, worin sie sich tatsächlich unterscheiden:
 
 | Kriterium | Spring AI | LangChain4j |
 | --- | --- | --- |
-| Hauptfokus | Spring Ökosystem | Java Ökosystem |
-| Spring Boot Integration | Sehr tief integriert | Sehr gut integriert |
-| LLM Provider | Viele Anbieter | Viele Anbieter |
-| RAG | Ja | Ja |
-| Tool Calling | Ja | Ja |
-| Vector Stores | Ja | Ja |
-| Chat Memory | Ja | Ja |
-| MCP | Ja | Ja |
-| AI Services | Spring typische Abstraktionen | Deklarative AI Services |
-| Einsatz außerhalb von Spring | Weniger relevant | Sehr gut möglich |
-| Typischer Einsatz | Spring Boot Anwendungen | Java AI Anwendungen verschiedener Stacks |
+| Herkunft | Teil des Spring-Projekts | Eigenständiges Open-Source-Projekt |
+| Läuft mit | Spring Boot | Plain Java, Spring Boot, Quarkus, Helidon |
+| Programmiermodell | Explizit: Fluent API über den `ChatClient` | Deklarativ: Interface mit `@AiService`, die Implementierung erzeugt das Framework |
+| Konfiguration | Spring-Starter und Spring-Properties | Builder im Code oder Starter des jeweiligen Frameworks |
+| Tool Calling | `ToolCallingAdvisor` in der Advisor-Kette des `ChatClient` | Java-Methoden als Tools eines AI Service, Ausführung auf Wunsch automatisch |
+| RAG-Bausteine | Advisors wie `QuestionAnswerAdvisor` und `RetrievalAugmentationAdvisor` | `ContentRetriever` und `RetrievalAugmentor` |
+| MCP | Spring pflegt das offizielle MCP Java SDK, Annotationen wie `@McpTool` | MCP-Unterstützung als Teil des Toolsets |
+| Observability | Integriert in Micrometer und das Spring-Monitoring | Eigene Listener, Anbindung ans Monitoring je nach Stack |
+| Stärker, wenn | KI Teil einer bestehenden Spring-Anwendung wird | KI im Zentrum steht oder kein Spring im Spiel ist |
 
-Der eigentliche Unterschied liegt deshalb weniger darin, **ob** ein Feature vorhanden ist, sondern vielmehr darin, **wie es in eine Java Anwendung integriert wird**.
-
-Genau das sollte bei der Auswahl eines Java AI Frameworks eine größere Rolle spielen als die reine Anzahl unterstützter Features.
+Der eigentliche Unterschied liegt also weniger darin, **ob** ein Feature vorhanden ist, sondern darin, **wie es sich in eine Java-Anwendung einfügt**. Genau das sollte bei der Auswahl mehr Gewicht haben als die Zahl der unterstützten Features.
 
 ## Was ist Spring AI?
 
-Spring AI ist ein Projekt aus dem Spring Ökosystem, das die Entwicklung von AI Funktionen innerhalb von Java und Spring Boot Anwendungen vereinfachen soll.
+Spring AI ist das Projekt des Spring-Ökosystems für KI-Funktionen in Java- und Spring-Boot-Anwendungen. Die Grundidee kennt jeder, der mit Spring arbeitet: Statt den Anwendungscode direkt an die API eines bestimmten LLM-Providers zu koppeln, stellt Spring AI abstrahierte Schnittstellen bereit. Unterschiedliche Modelle, Vector Stores und KI-Dienste lassen sich so über vergleichbare APIs ansprechen.
 
-Die Grundidee dürfte jedem bekannt vorkommen, der bereits mit Spring arbeitet.
+Mit Spring AI 2.0.0 hat das Framework im Juni 2026 einen wichtigen Schritt gemacht. Unter anderem wurde das Tool Calling grundlegend überarbeitet und stärker in die Advisor-Architektur des `ChatClient` integriert, außerdem wurde die Unterstützung für das Model Context Protocol ausgebaut ([Spring Blog](https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now/)).
 
-Anstatt den eigenen Anwendungscode direkt an die APIs eines bestimmten LLM Providers zu koppeln, stellt Spring AI abstrahierte Schnittstellen bereit. Dadurch können unterschiedliche Modelle, Vector Stores und AI Dienste über vergleichbare APIs angesprochen werden.
-
-Mit Spring AI 2.0.0 hat das Framework im Juni 2026 einen weiteren wichtigen Entwicklungsschritt gemacht. Unter anderem wurde das Tool Calling grundlegend überarbeitet und stärker in die Advisor Architektur des `ChatClient` integriert. Außerdem wurde die Unterstützung für das Model Context Protocol weiter ausgebaut ([Spring Blog](https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now/)).
-
-Zu den wichtigsten Komponenten gehören unter anderem:
+Zu den wichtigsten Komponenten gehören:
 
 - Chat Models
 - `ChatClient`
@@ -82,21 +63,13 @@ Zu den wichtigsten Komponenten gehören unter anderem:
 - Model Context Protocol
 - Observability
 
-Besonders interessant ist Spring AI natürlich für Anwendungen, die ohnehin bereits auf Spring Boot basieren.
-
-Viele Dinge fühlen sich dort genauso an wie andere Bestandteile einer klassischen Spring Anwendung. Konfiguration, Dependency Injection und Observability lassen sich in die bestehenden Strukturen integrieren.
+Besonders interessant ist Spring AI für Anwendungen, die ohnehin auf Spring Boot basieren. Vieles fühlt sich dort an wie jeder andere Bestandteil einer Spring-Anwendung: Konfiguration, Dependency Injection und Observability fügen sich in die bestehenden Strukturen ein.
 
 ## Was ist LangChain4j?
 
-LangChain4j verfolgt einen etwas anderen Ansatz.
+LangChain4j verfolgt einen etwas anderen Ansatz. Das Framework bezeichnet sich als speziell für Java entwickelte Bibliothek zur Integration von Large Language Models und ist nicht an Spring gebunden. Neben Spring Boot gibt es zum Beispiel Integrationen für Quarkus und Helidon ([LangChain4j Doku](https://docs.langchain4j.dev/)).
 
-Das Framework bezeichnet sich selbst als eine speziell für Java entwickelte Library zur Integration von Large Language Models. Dabei ist LangChain4j nicht ausschließlich an Spring gebunden.
-
-Neben Spring Boot existieren beispielsweise Integrationen für Quarkus und Helidon ([LangChain4j Doku](https://docs.langchain4j.dev/)).
-
-LangChain4j abstrahiert zahlreiche Komponenten, die bei der Entwicklung von LLM Anwendungen immer wieder benötigt werden.
-
-Dazu gehören beispielsweise:
+LangChain4j abstrahiert die Komponenten, die bei LLM-Anwendungen immer wieder gebraucht werden:
 
 - Chat Models
 - Prompt Templates
@@ -109,11 +82,7 @@ Dazu gehören beispielsweise:
 - Structured Outputs
 - AI Services
 
-Eine der interessantesten Abstraktionen sind die sogenannten **AI Services**.
-
-Dabei wird eine Java Schnittstelle definiert, deren Implementierung von LangChain4j erzeugt wird.
-
-Ein stark vereinfachtes Beispiel sieht so aus:
+Eine der interessantesten Abstraktionen sind die **AI Services**. Dabei definierst du eine Java-Schnittstelle, und LangChain4j erzeugt die Implementierung. Ein stark vereinfachtes Beispiel:
 
 ```java
 interface Assistant {
@@ -121,9 +90,7 @@ interface Assistant {
 }
 ```
 
-LangChain4j kann daraus einen Service erzeugen, der intern mit einem konfigurierten Chat Model kommuniziert.
-
-In Spring Boot Anwendungen lässt sich das noch stärker vereinfachen:
+LangChain4j erzeugt daraus einen Service, der intern mit einem konfigurierten Chat Model kommuniziert. In Spring-Boot-Anwendungen geht das noch kompakter:
 
 ```java
 @AiService
@@ -133,15 +100,11 @@ interface Assistant {
 }
 ```
 
-Die Integration erinnert bewusst an bekannte Java Konzepte wie Spring Data. Statt überall direkten Infrastrukturcode für das LLM zu schreiben, wird eine fachlich verständliche Schnittstelle definiert. LangChain4j übernimmt anschließend einen großen Teil der technischen Verbindung zum Modell ([LangChain4j: AI Services](https://docs.langchain4j.dev/tutorials/ai-services/)).
-
-Das ist elegant und gerade bei AI zentrierten Anwendungen sehr angenehm.
+Das erinnert bewusst an Konzepte wie Spring Data. Statt überall Infrastrukturcode für das LLM zu schreiben, definierst du eine fachlich verständliche Schnittstelle, und LangChain4j übernimmt einen großen Teil der technischen Verbindung zum Modell ([LangChain4j: AI Services](https://docs.langchain4j.dev/tutorials/ai-services/)). Das ist elegant und gerade bei KI-zentrierten Anwendungen sehr angenehm.
 
 ## Spring AI vs. LangChain4j: Die Architektur macht den Unterschied
 
-Auf Feature Ebene liegen Spring AI und LangChain4j inzwischen relativ nah beieinander.
-
-Deshalb halte ich Fragen wie diese für wenig hilfreich:
+Weil die Feature-Listen so ähnlich sind, halte ich diese Frage für wenig hilfreich:
 
 > Welches Framework unterstützt mehr AI Features?
 
@@ -149,25 +112,13 @@ Die bessere Frage lautet:
 
 > Welches Framework passt besser zur Architektur meiner Anwendung?
 
-Und genau hier werden die Unterschiede interessanter.
+Hier werden die Unterschiede interessant. Spring AI denkt KI-Funktionen aus der Perspektive einer Spring-Anwendung, LangChain4j aus der Perspektive einer Java-KI-Anwendung. Das klingt nach einer kleinen semantischen Unterscheidung, in größeren Projekten kann sie die Architektur aber erheblich prägen.
 
-Spring AI denkt AI Funktionen stark aus der Perspektive einer Spring Anwendung heraus.
+## Spring-Boot-Integration
 
-LangChain4j denkt stärker aus der Perspektive einer Java AI Anwendung heraus.
+Wenn du bereits eine größere Spring-Boot-Anwendung betreibst, spricht viel für Spring AI. Das Prinzip kennen Spring-Entwickler: Abhängigkeiten kommen über Starter, die Konfiguration landet in den bekannten Spring-Properties, Komponenten werden als Beans bereitgestellt, und das Monitoring hängt an den vorhandenen Spring-Mechanismen. KI wirkt dadurch nicht wie ein Fremdkörper in der Anwendung.
 
-Das klingt zunächst nach einer kleinen semantischen Unterscheidung. In größeren Projekten kann sie jedoch erheblichen Einfluss auf die Architektur haben.
-
-## Spring Boot Integration
-
-Wenn du bereits eine größere Spring Boot Anwendung betreibst, spricht sehr viel für Spring AI.
-
-Spring Entwickler kennen das Prinzip.
-
-Abhängigkeiten werden über Starter eingebunden. Konfiguration landet in den bekannten Spring Properties. Komponenten werden als Beans bereitgestellt. Monitoring kann mit vorhandenen Spring Mechanismen verbunden werden.
-
-Dadurch fühlt sich AI nicht wie ein Fremdkörper innerhalb der Anwendung an.
-
-Ein einfacher Aufruf über den `ChatClient` kann beispielsweise so aussehen:
+Ein einfacher Aufruf über den `ChatClient` sieht zum Beispiel so aus:
 
 ```java
 @Service
@@ -188,61 +139,25 @@ public class ProductDescriptionService {
 }
 ```
 
-Wer bereits täglich mit Spring Services, Dependency Injection und Spring Boot arbeitet, findet sich in dieser Architektur sehr schnell zurecht.
+Wer täglich mit Spring-Services, Dependency Injection und Spring Boot arbeitet, findet sich darin sofort zurecht.
 
 ### Kann LangChain4j ebenfalls Spring Boot?
 
-Ja.
+Ja, und dieser Punkt wird in manchen Vergleichen zu stark vereinfacht. LangChain4j ist keineswegs ungeeignet für Spring Boot. Das Projekt stellt eigene Spring-Boot-Starter bereit, unterstützt Spring Boot 3 und Spring Boot 4 und konfiguriert über den Starter unter anderem AI Services, Tools und RAG-Komponenten automatisch ([LangChain4j: Spring Boot Integration](https://docs.langchain4j.dev/tutorials/spring-boot-integration/)).
 
-Und dieser Punkt wird in manchen Vergleichen zu stark vereinfacht.
+Der Unterschied lautet also nicht, dass Spring AI mit Spring funktioniert und LangChain4j nicht. Er liegt in der grundsätzlichen Ausrichtung: Spring AI ist Teil des Spring-Ökosystems, LangChain4j ist ein Java-KI-Framework mit sehr guter Spring-Integration. Für ein bestehendes Spring-Projekt kann dieser Unterschied durchaus relevant sein.
 
-LangChain4j ist keineswegs ungeeignet für Spring Boot. Das Projekt stellt eigene Spring Boot Starter zur Verfügung und unterstützt sowohl Spring Boot 3 als auch Spring Boot 4. Über den LangChain4j Starter können unter anderem AI Services, Tools und RAG Komponenten automatisch konfiguriert werden ([LangChain4j: Spring Boot Integration](https://docs.langchain4j.dev/tutorials/spring-boot-integration/)).
+## LLM-Integration: Beide Frameworks vermeiden unnötiges Vendor-Lock-in
 
-Der Unterschied lautet deshalb nicht:
+Eine der ersten Fragen bei der Architektur einer LLM-Anwendung sollte lauten: Was passiert, wenn wir später das Modell wechseln wollen? Vielleicht startet ein Projekt mit OpenAI und soll später Anthropic nutzen. Vielleicht wird aus Datenschutzgründen auf ein lokales Modell über Ollama gewechselt, oder die KI-Infrastruktur läuft über AWS oder Google Cloud. Anwendungscode direkt gegen die API eines einzelnen Providers zu schreiben, kann deshalb langfristig teuer werden.
 
-**Spring AI funktioniert mit Spring und LangChain4j nicht.**
-
-Der Unterschied liegt vielmehr in der grundsätzlichen Ausrichtung.
-
-Spring AI ist Teil des Spring Ökosystems.
-
-LangChain4j ist ein Java AI Framework mit sehr guter Spring Integration.
-
-Für ein bestehendes Spring Projekt kann dieser Unterschied durchaus relevant sein.
-
-## LLM Integration: Beide Frameworks vermeiden unnötiges Vendor Lock in
-
-Eine der ersten Fragen bei der Architektur einer LLM Anwendung sollte lauten:
-
-Was passiert, wenn wir später das Modell wechseln möchten?
-
-Vielleicht startet ein Projekt mit OpenAI und soll später Anthropic verwenden. Vielleicht wird aus Datenschutzgründen auf ein lokales Modell über Ollama gewechselt. In anderen Fällen läuft die AI Infrastruktur über AWS oder Google Cloud.
-
-Den Anwendungscode direkt gegen eine einzelne Provider API zu entwickeln, kann deshalb langfristig teuer werden.
-
-Sowohl Spring AI als auch LangChain4j versuchen dieses Problem durch abstrahierte APIs zu reduzieren.
-
-Spring AI unterstützt zahlreiche kommerzielle und Open Source Modelle. LangChain4j verfolgt einen ähnlichen Ansatz und stellt ebenfalls einheitliche APIs für unterschiedliche LLM Provider bereit ([LangChain4j Doku](https://docs.langchain4j.dev/)).
-
-Das bedeutet natürlich nicht, dass jedes Modell vollkommen austauschbar ist.
-
-Unterschiedliche Modelle besitzen unterschiedliche Fähigkeiten, Parameter, Context Windows und Tool Calling Implementierungen. Eine Abstraktionsschicht kann diese Unterschiede nicht vollständig verschwinden lassen.
-
-Sie verhindert aber, dass die gesamte Businesslogik direkt von einem einzelnen AI Anbieter abhängig wird.
-
-Für produktive Java Anwendungen ist das aus meiner Sicht einer der wichtigsten Vorteile beider Frameworks.
+Spring AI und LangChain4j reduzieren dieses Problem durch abstrahierte APIs. Beide unterstützen zahlreiche kommerzielle und Open-Source-Modelle über einheitliche Schnittstellen ([LangChain4j Doku](https://docs.langchain4j.dev/)). Vollkommen austauschbar wird ein Modell dadurch nicht: Fähigkeiten, Parameter, Kontextfenster und Tool-Calling-Implementierungen unterscheiden sich, und keine Abstraktionsschicht lässt das ganz verschwinden. Sie verhindert aber, dass die gesamte Geschäftslogik direkt von einem einzelnen KI-Anbieter abhängt. Für produktive Java-Anwendungen ist das für mich einer der wichtigsten Vorteile beider Frameworks.
 
 ## Spring AI vs. LangChain4j bei RAG
 
-**Retrieval Augmented Generation**, kurz RAG, gehört inzwischen zu den wichtigsten Architekturmustern für Enterprise AI Anwendungen.
+**Retrieval Augmented Generation**, kurz RAG, gehört inzwischen zu den wichtigsten Architekturmustern für KI-Anwendungen im Unternehmen. Statt sich nur auf das Wissen eines Sprachmodells zu verlassen, sucht die Anwendung relevante Informationen in eigenen Datenquellen und gibt sie dem Modell als zusätzlichen Kontext mit.
 
-Statt sich ausschließlich auf das Wissen eines Sprachmodells zu verlassen, werden relevante Informationen aus eigenen Datenquellen gesucht und dem Modell als zusätzlicher Kontext zur Verfügung gestellt.
-
-Ein typisches Beispiel wäre ein interner Support Assistent.
-
-Ein Benutzer stellt eine Frage zu einem Produkt. Die Anwendung sucht zunächst relevante Informationen aus Dokumentationen, Handbüchern oder einer Wissensdatenbank. Erst anschließend bekommt das LLM die gefundenen Informationen zusammen mit der ursprünglichen Frage.
-
-Das Grundprinzip sieht ungefähr so aus:
+Ein typisches Beispiel ist ein interner Support-Assistent: Ein Benutzer fragt nach einem Produkt, die Anwendung sucht zuerst in Dokumentationen, Handbüchern oder einer Wissensdatenbank, und erst dann bekommt das LLM die gefundenen Informationen zusammen mit der ursprünglichen Frage. Das Grundprinzip:
 
 ```text
 Frage des Benutzers
@@ -256,15 +171,9 @@ LLM erhält Frage und Kontext
 Antwort
 ```
 
-Sowohl **Spring AI RAG** als auch **LangChain4j RAG** unterstützen dieses Muster.
+Beide Frameworks unterstützen dieses Muster. LangChain4j bietet dafür `ContentRetriever` und `RetrievalAugmentor`, über den `RetrievalAugmentor` lassen sich komplexere Pipelines mit Query-Transformation, Routing und weiteren Verarbeitungsschritten aufbauen ([LangChain4j: AI Services](https://docs.langchain4j.dev/tutorials/ai-services/)). Spring AI bietet ebenfalls verschiedene Abstraktionen für RAG und die Anbindung von Vector Stores.
 
-LangChain4j bietet dafür beispielsweise `ContentRetriever` und `RetrievalAugmentor`. Über den `RetrievalAugmentor` lassen sich komplexere RAG Pipelines mit Query Transformation, Routing und weiteren Verarbeitungsschritten aufbauen ([LangChain4j: AI Services](https://docs.langchain4j.dev/tutorials/ai-services/)).
-
-Auch Spring AI bietet verschiedene Abstraktionen für RAG und die Anbindung von Vector Stores.
-
-Für einfache Szenarien unterscheiden sich die Frameworks daher weniger darin, was technisch möglich ist.
-
-Spannender wird es bei komplexeren Anforderungen.
+Für einfache Szenarien unterscheiden sich die Frameworks deshalb kaum darin, was technisch möglich ist. Spannender wird es bei komplexeren Anforderungen:
 
 - Wie sollen Queries transformiert werden?
 - Werden mehrere Datenquellen benötigt?
@@ -273,39 +182,19 @@ Spannender wird es bei komplexeren Anforderungen.
 - Wie werden Zugriffsrechte auf Dokumente berücksichtigt?
 - Wie misst man die Qualität der gefundenen Inhalte?
 
-Spätestens an diesem Punkt wird deutlich, dass ein produktives RAG System wesentlich mehr ist als eine Vector Database plus LLM.
-
-Und genau deshalb würde ich die Framework Entscheidung nicht ausschließlich anhand eines einfachen RAG Tutorials treffen.
+Spätestens hier wird deutlich, dass ein produktives RAG-System wesentlich mehr ist als eine Vektordatenbank plus LLM. Die Framework-Entscheidung würde ich deshalb nicht allein anhand eines einfachen RAG-Tutorials treffen.
 
 ## Welches Framework ist besser für RAG?
 
-Für eine bestehende Spring Boot Architektur würde ich zunächst Spring AI evaluieren.
+Für eine bestehende Spring-Boot-Architektur würde ich zuerst Spring AI evaluieren. Der Grund ist weniger ein einzelnes RAG-Feature als die Integration in die restliche Anwendung: Wenn Authentifizierung, Datenzugriff, Logging, Metriken und Business-Services ohnehin in Spring laufen, sollte auch die KI-Pipeline sauber in diese Architektur eingebettet sein. LangChain4j ist dagegen interessant, wenn die KI-Pipeline selbst im Mittelpunkt der Anwendung steht oder die Anwendung nicht an Spring gebunden sein soll.
 
-Der Grund liegt weniger in einem einzelnen RAG Feature, sondern in der Integration mit der restlichen Anwendung.
-
-Wenn Authentifizierung, Datenzugriff, Logging, Metrics und Business Services ohnehin innerhalb von Spring laufen, ist es sinnvoll, auch die AI Pipeline möglichst sauber in diese Architektur einzubetten.
-
-LangChain4j ist dagegen interessant, wenn die AI Pipeline selbst stärker im Mittelpunkt der Anwendung steht oder die Anwendung nicht zwingend an Spring gebunden sein soll.
-
-Beide Frameworks sind für anspruchsvolle RAG Anwendungen geeignet.
-
-Die Qualität des späteren Systems hängt meistens stärker von Chunking, Retrieval Strategie, Embeddings, Datenqualität, Re Ranking und Evaluation ab als von der Wahl zwischen Spring AI und LangChain4j.
-
-Wie eine vollständige RAG Anwendung mit Spring AI aussieht und wo diese Punkte in der Praxis auftauchen, zeige ich im [Spring AI RAG Tutorial mit PostgreSQL und pgvector](/blog/spring-ai-rag-java-tutorial).
+Beide Frameworks eignen sich für anspruchsvolle RAG-Anwendungen. Die Qualität des späteren Systems hängt meist stärker von Chunking, Retrieval-Strategie, Embeddings, Datenqualität, Re-Ranking und Evaluation ab als von der Wahl zwischen Spring AI und LangChain4j. Wie eine vollständige RAG-Anwendung mit Spring AI aussieht und wo diese Punkte in der Praxis auftauchen, zeige ich im [Spring AI RAG Tutorial mit PostgreSQL und pgvector](/blog/spring-ai-rag-java-tutorial).
 
 ## Tool Calling mit Spring AI und LangChain4j
 
-Ein LLM kann zunächst nur Text erzeugen.
+Ein LLM kann zunächst nur Text erzeugen, und für viele produktive Anwendungen reicht das nicht. Ein KI-Assistent soll vielleicht eine Bestellung suchen, Kundendaten abrufen, etwas berechnen oder Informationen aus einem internen System laden. Hier kommt **Tool Calling** ins Spiel: Eine Funktion wird für das Sprachmodell beschrieben, und das Modell entscheidet, wann es sie braucht und mit welchen Parametern sie aufgerufen werden soll.
 
-Für viele produktive Anwendungen reicht das nicht.
-
-Ein AI Assistent soll vielleicht eine Bestellung suchen, Kundendaten abrufen, eine Berechnung durchführen oder Informationen aus einem internen System laden.
-
-Hier kommt **Tool Calling** ins Spiel.
-
-Dabei wird eine Funktion für das Sprachmodell beschrieben. Das Modell entscheidet anschließend, wann diese Funktion benötigt wird und mit welchen Parametern sie aufgerufen werden soll.
-
-Angenommen, eine Anwendung besitzt folgende Methode:
+Angenommen, eine Anwendung hat diese Methode:
 
 ```java
 @Tool(description = "Sucht eine Bestellung anhand ihrer Bestellnummer")
@@ -314,55 +203,27 @@ public Order findOrder(String orderNumber) {
 }
 ```
 
-Ein Benutzer könnte anschließend fragen:
+Ein Benutzer fragt anschließend:
 
 ```text
 Wo befindet sich meine Bestellung 4711?
 ```
 
-Das Modell erkennt, dass aktuelle Informationen benötigt werden, und fordert den Aufruf des entsprechenden Tools an.
-
-Die Anwendung führt die Methode aus. Das Ergebnis wird an das Modell zurückgegeben. Auf Basis dieser Daten kann anschließend eine natürliche Antwort erzeugt werden.
-
-Genau solche Abläufe sind eine wichtige Grundlage moderner AI Systeme.
+Das Modell erkennt, dass es aktuelle Informationen braucht, und fordert den Aufruf des passenden Tools an. Die Anwendung führt die Methode aus und gibt das Ergebnis an das Modell zurück, das daraus eine natürliche Antwort formuliert. Solche Abläufe sind eine wichtige Grundlage moderner KI-Systeme.
 
 ### Tool Calling in Spring AI 2.0
 
-Mit Spring AI 2.0 wurde die Tool Calling Architektur deutlich verändert.
-
-Der Tool Execution Loop wurde aus den einzelnen Chat Model Implementierungen herausgelöst und in die Advisor Architektur verschoben. Der `ToolCallingAdvisor` kann den vollständigen Ablauf eines Tool Calls innerhalb des `ChatClient` steuern ([Spring Blog](https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now/)).
-
-Das ist vor allem für komplexere Anwendungen interessant.
-
-Tool Aufrufe können dadurch besser mit anderen Advisors kombiniert, beobachtet und erweitert werden.
+Mit Spring AI 2.0 hat sich die Tool-Calling-Architektur deutlich verändert. Der Tool Execution Loop wurde aus den einzelnen Chat-Model-Implementierungen herausgelöst und in die Advisor-Architektur verschoben. Der `ToolCallingAdvisor` steuert den vollständigen Ablauf eines Tool Calls innerhalb des `ChatClient` ([Spring Blog](https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now/)). Das ist vor allem für komplexere Anwendungen interessant, weil sich Tool-Aufrufe so besser mit anderen Advisors kombinieren, beobachten und erweitern lassen.
 
 ### Tool Calling in LangChain4j
 
-Auch LangChain4j unterstützt Java Methoden als Tools.
-
-Diese lassen sich beispielsweise einem AI Service zur Verfügung stellen. Das Modell kann anschließend entscheiden, wann eine entsprechende Java Funktion aufgerufen werden muss.
-
-LangChain4j übernimmt dabei auf Wunsch auch die automatische Ausführung der Tools ([LangChain4j: AI Services](https://docs.langchain4j.dev/tutorials/ai-services/)).
-
-Beide Frameworks bieten damit eine gute Grundlage für Anwendungen, die nicht nur Fragen beantworten, sondern tatsächlich mit bestehenden Business Systemen interagieren sollen.
+Auch LangChain4j unterstützt Java-Methoden als Tools, die sich zum Beispiel einem AI Service zur Verfügung stellen lassen. Das Modell entscheidet dann, wann eine Java-Funktion aufgerufen werden muss, und LangChain4j übernimmt auf Wunsch auch die automatische Ausführung ([LangChain4j: AI Services](https://docs.langchain4j.dev/tutorials/ai-services/)). Beide Frameworks bieten damit eine gute Grundlage für Anwendungen, die nicht nur Fragen beantworten, sondern mit bestehenden Business-Systemen interagieren sollen.
 
 ## Und was ist mit AI Agents?
 
-Kaum ein Begriff wird im Bereich Generative AI derzeit so häufig verwendet wie **AI Agent**.
+Kaum ein Begriff wird in der generativen KI derzeit so häufig verwendet wie **AI Agent**, und kaum einer ist so unscharf. Eine Anwendung wird nicht automatisch zu einem intelligenten Agenten, nur weil ein Sprachmodell zwei Tools aufrufen kann. Bei komplexeren agentischen Systemen kommen Anforderungen hinzu: Das System muss entscheiden, welche Schritte nötig sind, Zwischenergebnisse verarbeiten, Tools auswählen, Fehler behandeln und gegebenenfalls mehrere Iterationen durchlaufen.
 
-Gleichzeitig ist der Begriff erstaunlich unscharf.
-
-Eine Anwendung wird nicht automatisch zu einem intelligenten Agenten, nur weil ein Sprachmodell zwei Tools aufrufen kann.
-
-Bei komplexeren agentischen Systemen kommen zusätzliche Anforderungen hinzu.
-
-Das System muss beispielsweise entscheiden, welche Schritte notwendig sind. Es muss Zwischenergebnisse verarbeiten, Tools auswählen, Fehler behandeln und gegebenenfalls mehrere Iterationen durchführen.
-
-LangChain4j positioniert Agents ausdrücklich als einen Bestandteil seines Toolsets. Spring AI 2.0 hat wiederum seine Architektur für agentische Workflows deutlich erweitert und insbesondere Tool Calling als komponierbaren Bestandteil der Advisor Chain gestaltet ([LangChain4j Doku](https://docs.langchain4j.dev/)).
-
-Für mich wäre die reine Existenz eines `Agent` Features trotzdem kein entscheidendes Auswahlkriterium.
-
-In produktiven Projekten interessieren mich andere Fragen stärker.
+LangChain4j positioniert Agents ausdrücklich als Bestandteil seines Toolsets. Spring AI 2.0 hat seine Architektur für agentische Workflows deutlich erweitert und insbesondere Tool Calling als komponierbaren Teil der Advisor-Kette gestaltet ([LangChain4j Doku](https://docs.langchain4j.dev/)). Die bloße Existenz eines `Agent`-Features wäre für mich trotzdem kein entscheidendes Auswahlkriterium. In produktiven Projekten interessieren mich andere Fragen:
 
 - Wie transparent ist der Ablauf?
 - Wie kann ich einzelne Entscheidungen nachvollziehen?
@@ -371,23 +232,11 @@ In produktiven Projekten interessieren mich andere Fragen stärker.
 - Wie lassen sich Endlosschleifen verhindern?
 - Wie kann ich das Verhalten testen?
 
-Und vor allem: Muss dieser Prozess überhaupt agentisch sein?
-
-Manche Probleme werden unnötig kompliziert, sobald ein LLM selbst über jeden nächsten Schritt entscheiden soll.
-
-Ein deterministischer Workflow mit einzelnen AI Komponenten ist in vielen Enterprise Anwendungen die robustere Lösung.
+Und vor allem: Muss dieser Prozess überhaupt agentisch sein? Manche Probleme werden unnötig kompliziert, sobald ein LLM selbst über jeden nächsten Schritt entscheiden soll. Ein deterministischer Workflow mit einzelnen KI-Komponenten ist in vielen Unternehmensanwendungen die robustere Lösung.
 
 ## Developer Experience: Zwei unterschiedliche Philosophien
 
-Besonders deutlich wird der Unterschied zwischen Spring AI und LangChain4j bei der Developer Experience.
-
-Spring AI wirkt für erfahrene Spring Entwickler vertraut.
-
-Der `ChatClient` ist explizit und lässt gut erkennen, wann eine Anfrage an das Modell gestellt wird.
-
-LangChain4j bietet mit AI Services dagegen eine stärker deklarative Variante.
-
-Ein Service könnte beispielsweise so aussehen:
+Besonders deutlich wird der Unterschied bei der Developer Experience. Spring AI wirkt für erfahrene Spring-Entwickler vertraut: Der `ChatClient` ist explizit und lässt gut erkennen, wann eine Anfrage an das Modell geht. LangChain4j bietet mit AI Services eine stärker deklarative Variante. Ein Service kann zum Beispiel so aussehen:
 
 ```java
 @AiService
@@ -401,7 +250,7 @@ public interface CustomerSupportAssistant {
 }
 ```
 
-An anderer Stelle kann dieser Service wie eine normale Java Abhängigkeit verwendet werden:
+An anderer Stelle wird dieser Service wie eine normale Java-Abhängigkeit verwendet:
 
 ```java
 @RestController
@@ -420,29 +269,13 @@ public class SupportController {
 }
 ```
 
-Ich finde diesen Ansatz sehr angenehm.
+Ich finde diesen Ansatz sehr angenehm: Er versteckt viel Infrastruktur und lässt den Anwendungscode sauber wirken. Gleichzeitig ist es eine Frage des Architekturgeschmacks. In manchen Anwendungen möchte ich den Kontakt zum LLM bewusst expliziter halten, besonders wenn Prompt-Aufbau, Retries, Tools, Retrieval und weitere Schritte Teil einer größeren Pipeline sind. Dann gefällt mir der Ansatz von Spring AI häufig besser.
 
-Er versteckt viel Infrastruktur und lässt den eigentlichen Anwendungscode sauber wirken.
+Einen objektiven Gewinner gibt es bei der Developer Experience deshalb nicht. Wer möglichst deklarativ arbeiten will, dürfte die AI Services von LangChain4j mögen. Wer bereits stark in Spring denkt und die einzelnen Schritte expliziter kontrollieren will, fühlt sich mit Spring AI wahrscheinlich schneller wohl.
 
-Das ist gleichzeitig aber auch eine Frage des persönlichen Architekturgeschmacks.
+## Observability wird in produktiven KI-Anwendungen unterschätzt
 
-In manchen Anwendungen möchte ich den Kontakt zum LLM bewusst expliziter halten. Besonders dann, wenn Prompt Aufbau, Retries, Tools, Retrieval und weitere Verarbeitungsschritte Teil einer größeren Pipeline sind.
-
-Hier gefällt mir der Ansatz von Spring AI häufig besser.
-
-Es gibt deshalb keinen objektiven Gewinner bei der Developer Experience.
-
-Wer möglichst deklarativ arbeiten möchte, dürfte die AI Services von LangChain4j mögen.
-
-Wer bereits stark in Spring denkt und die einzelnen Schritte expliziter kontrollieren möchte, wird sich mit Spring AI wahrscheinlich schneller wohlfühlen.
-
-## Observability wird in produktiven AI Anwendungen unterschätzt
-
-Ein Proof of Concept ist schnell gebaut.
-
-Ein produktives AI System ist eine andere Geschichte.
-
-Plötzlich entstehen Fragen, die in vielen Tutorials kaum vorkommen.
+Ein Proof of Concept ist schnell gebaut, ein produktives KI-System ist eine andere Geschichte. Plötzlich entstehen Fragen, die in vielen Tutorials kaum vorkommen:
 
 - Wie lange dauert eine Anfrage an das Modell?
 - Wie viele Tokens wurden verwendet?
@@ -453,73 +286,25 @@ Plötzlich entstehen Fragen, die in vielen Tutorials kaum vorkommen.
 - Welche Modellversion wurde für eine Antwort verwendet?
 - Wie verhält sich die Anwendung unter Last?
 
-Für klassische Backend Systeme sind Monitoring, Logging und Tracing längst selbstverständlich.
-
-Bei LLM Anwendungen sollten sie genauso selbstverständlich sein.
-
-Gerade hier passt Spring AI sehr gut in klassische Enterprise Architekturen, weil AI Komponenten nicht vollständig getrennt vom restlichen Spring Ökosystem betrachtet werden müssen.
-
-Das ist für mich ein starkes Argument für Spring AI, wenn eine AI Funktion Teil einer bereits existierenden Spring Boot Plattform werden soll.
+In klassischen Backend-Systemen sind Monitoring, Logging und Tracing längst selbstverständlich, bei LLM-Anwendungen sollten sie es genauso sein. Hier passt Spring AI besonders gut in klassische Unternehmensarchitekturen, weil KI-Komponenten nicht getrennt vom restlichen Spring-Ökosystem betrachtet werden müssen. Für mich ist das ein starkes Argument für Spring AI, wenn eine KI-Funktion Teil einer bestehenden Spring-Boot-Plattform werden soll.
 
 ## Model Context Protocol wird wichtiger
 
-Ein weiterer Punkt, den ich 2026 nicht mehr ignorieren würde, ist das **Model Context Protocol**, kurz MCP.
+Ein weiterer Punkt, den ich 2026 nicht mehr ignorieren würde, ist das **Model Context Protocol**, kurz MCP. Es standardisiert die Kommunikation zwischen KI-Anwendungen und externen Tools beziehungsweise Ressourcen. Statt für jede Kombination aus KI-Anwendung und externem System eine eigene Integration zu bauen, entsteht eine einheitliche Schnittstelle.
 
-MCP standardisiert die Kommunikation zwischen AI Anwendungen und externen Tools beziehungsweise Ressourcen.
-
-Das Ziel ist interessant.
-
-Statt für jede Kombination aus AI Anwendung und externem System eine individuelle Integration zu bauen, entsteht eine standardisierte Schnittstelle.
-
-Spring investiert inzwischen stark in dieses Thema. Das Spring Team entwickelt und pflegt auch das offizielle MCP Java SDK. Spring AI 2.0 integriert Version 2.0 dieses SDK und bietet unter anderem Annotationen wie `@McpTool`, `@McpResource` und `@McpPrompt` ([Spring Blog](https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now/)).
-
-Gerade für Java und Spring Entwickler könnte MCP in den kommenden Jahren deshalb eine wichtige Rolle spielen.
-
-Wer heute eine neue AI Architektur plant, sollte zumindest prüfen, ob zukünftige Integrationen über MCP sinnvoll abgebildet werden könnten.
+Spring investiert stark in dieses Thema: Das Spring-Team entwickelt und pflegt das offizielle MCP Java SDK, und Spring AI 2.0 integriert Version 2.0 dieses SDK, unter anderem mit Annotationen wie `@McpTool`, `@McpResource` und `@McpPrompt` ([Spring Blog](https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now/)). Für Java- und Spring-Entwickler dürfte MCP in den kommenden Jahren eine wichtige Rolle spielen. Wer heute eine neue KI-Architektur plant, sollte zumindest prüfen, ob sich künftige Integrationen über MCP abbilden lassen.
 
 ## Wann würde ich Spring AI verwenden?
 
-Wenn ich heute eine bestehende **Spring Boot Anwendung um Generative AI erweitern** müsste, wäre Spring AI in den meisten Fällen mein erster Kandidat.
+Wenn ich heute eine bestehende Spring-Boot-Anwendung um generative KI erweitern müsste, wäre Spring AI in den meisten Fällen mein erster Kandidat. Besonders sinnvoll ist es, wenn bereits eine größere Spring-Architektur vorhanden ist, etwa mit Spring Security, Spring Data, Micrometer, eigenen Business-Services und etablierten Deployment-Strukturen. In solchen Projekten behandle ich KI-Funktionen nicht als separates technisches Universum, sondern als weiteren Bestandteil der Anwendung.
 
-Besonders sinnvoll finde ich Spring AI, wenn bereits eine größere Spring Architektur vorhanden ist.
-
-Dazu gehören beispielsweise Anwendungen mit Spring Security, Spring Data, Micrometer, eigenen Business Services und etablierten Deployment Strukturen.
-
-In solchen Projekten möchte ich AI Funktionen nicht als separates technisches Universum behandeln.
-
-Sie sind ein weiterer Bestandteil der Anwendung.
-
-Ein LLM kann Produktinformationen erzeugen.
-Ein anderes Feature verwendet RAG für eine interne Wissensdatenbank.
-Ein Tool ruft einen bestehenden Customer Service auf.
-
-Die Anwendung besitzt weiterhin dieselben fachlichen Grenzen und Qualitätsanforderungen wie vorher.
-
-Genau bei dieser Art von Architektur spielt Spring AI seine Stärken aus.
-
-Wie ich eine solche Integration konkret aufbauen würde, habe ich in einem eigenen Artikel zu [LLMs mit Spring Boot](/blog/llms-mit-spring-boot-integrieren) beschrieben.
+Ein LLM erzeugt Produktinformationen, ein anderes Feature nutzt RAG für eine interne Wissensdatenbank, ein Tool ruft einen bestehenden Customer Service auf. Die Anwendung hat weiterhin dieselben fachlichen Grenzen und Qualitätsanforderungen wie vorher, und genau bei dieser Art von Architektur spielt Spring AI seine Stärken aus. Wie ich eine solche Integration konkret aufbaue, beschreibe ich im Artikel zu [LLMs mit Spring Boot](/blog/llms-mit-spring-boot-integrieren).
 
 ## Wann würde ich LangChain4j verwenden?
 
-LangChain4j würde ich insbesondere dann genauer betrachten, wenn die Anwendung nicht stark an Spring gebunden ist.
+LangChain4j würde ich vor allem dann genauer betrachten, wenn die Anwendung nicht stark an Spring gebunden ist: wenn Quarkus im Einsatz ist, wenn eine wiederverwendbare Java-Bibliothek entstehen soll oder wenn die KI-Funktionalität im Zentrum des Produkts steht. Auch die deklarativen AI Services sind ein gutes Argument. Sie ermöglichen sehr kompakte APIs und passen hervorragend zu Anwendungen, in denen LLM-Funktionen als fachliche Services modelliert werden.
 
-Vielleicht wird Quarkus verwendet.
-Vielleicht soll eine wiederverwendbare Java Library entwickelt werden.
-Vielleicht steht die AI Funktionalität sehr stark im Zentrum des Produkts.
-
-Auch die deklarativen AI Services sind ein gutes Argument für LangChain4j.
-
-Sie ermöglichen sehr kompakte APIs und passen hervorragend zu Java Anwendungen, bei denen LLM Funktionen als fachliche Services modelliert werden sollen.
-
-LangChain4j unterstützt außerdem Spring Boot sehr gut.
-
-Die Entscheidung für LangChain4j bedeutet deshalb keineswegs, dass auf Spring verzichtet werden muss.
-
-Der entscheidende Unterschied ist die Perspektive.
-
-Bei LangChain4j wähle ich eine AI Library für Java und integriere sie anschließend in mein Framework.
-
-Bei Spring AI erweitere ich meine Spring Anwendung um AI Fähigkeiten.
+Da LangChain4j Spring Boot sehr gut unterstützt, bedeutet die Entscheidung dafür keineswegs einen Verzicht auf Spring. Der Unterschied ist die Perspektive: Bei LangChain4j wähle ich eine KI-Bibliothek für Java und integriere sie in mein Framework. Bei Spring AI erweitere ich meine Spring-Anwendung um KI-Fähigkeiten.
 
 <ServiceCta slug="llm-integration-java">
   Du bist unsicher, welches Framework zu deiner Anwendung passt? Im Architektur-Check schauen wir uns deinen Stack und deinen Anwendungsfall an, und du bekommst eine begründete Empfehlung, bevor Code entsteht.
@@ -527,84 +312,52 @@ Bei Spring AI erweitere ich meine Spring Anwendung um AI Fähigkeiten.
 
 ## Spring AI vs. LangChain4j: Meine Empfehlung für 2026
 
-Wenn ich mich für ein neues Projekt entscheiden müsste, würde ich nicht versuchen, einen allgemeinen Gewinner zu bestimmen.
+Wenn ich mich für ein neues Projekt entscheiden müsste, würde ich keinen allgemeinen Gewinner bestimmen, sondern von der bestehenden Architektur ausgehen.
 
-Meine Entscheidung wäre abhängig von der bestehenden Architektur.
+**Für eine klassische Spring-Boot-Anwendung würde ich 2026 zuerst Spring AI verwenden.** Die Integration ins Spring-Ökosystem ist hier der entscheidende Vorteil. Das Framework fühlt sich wie eine natürliche Erweiterung der Anwendung an und nicht wie eine zusätzliche Plattform innerhalb der Plattform.
 
-**Für eine klassische Spring Boot Anwendung würde ich 2026 zunächst Spring AI verwenden.**
+**Für eine Java-Anwendung außerhalb von Spring oder ein stark KI-zentriertes Projekt würde ich LangChain4j genauer evaluieren.** Besonders die AI Services und der Einsatz in unterschiedlichen Java-Stacks machen LangChain4j attraktiv. Wer bereits Spring Boot einsetzt, macht aber auch mit LangChain4j nichts grundsätzlich falsch.
 
-Die Integration in das Spring Ökosystem ist für mich hier der entscheidende Vorteil. Das Framework fühlt sich wie eine natürliche Erweiterung einer bestehenden Spring Anwendung an und nicht wie eine zusätzliche Plattform innerhalb der Plattform.
-
-**Für eine Java Anwendung außerhalb von Spring oder für ein stark AI zentriertes Projekt würde ich LangChain4j genauer evaluieren.**
-
-Besonders die AI Services und die Möglichkeit, das Framework in unterschiedlichen Java Stacks zu verwenden, machen LangChain4j attraktiv.
-
-Wer bereits Spring Boot einsetzt, macht allerdings auch mit LangChain4j nichts grundsätzlich falsch.
-
-Beide Frameworks sind inzwischen leistungsfähig genug für ernsthafte Java AI Anwendungen.
-
-Die Entscheidung sollte deshalb nicht anhand einer möglichst langen Feature Liste fallen.
-
-Sie sollte anhand der eigenen Architektur fallen.
+Beide Frameworks sind inzwischen leistungsfähig genug für ernsthafte Java-Anwendungen mit KI. Die Entscheidung sollte deshalb nicht an der längsten Feature-Liste fallen, sondern an der eigenen Architektur.
 
 ## Fazit
 
-**Spring AI vs. LangChain4j** ist 2026 weniger ein Kampf um das bessere Java AI Framework als eine Frage der richtigen Integration.
+**Spring AI vs. LangChain4j** ist 2026 weniger ein Kampf um das bessere Java-AI-Framework als eine Frage der richtigen Integration. Spring AI ist besonders stark, wenn KI-Funktionen Teil einer bestehenden Spring-Boot-Anwendung werden sollen. LangChain4j bietet einen überzeugenden Java-first-Ansatz und bleibt bei der Wahl des darunterliegenden Frameworks flexibler. RAG, Tool Calling, LLM-Integration und die anderen zentralen Funktionen beherrschen beide.
 
-Spring AI ist besonders stark, wenn AI Funktionen Teil einer bestehenden Spring Boot Anwendung werden sollen.
+Ich würde deshalb zuerst die bestehende Anwendung betrachten. Läuft ein größerer Teil der Infrastruktur auf Spring Boot, ist Spring AI der naheliegende Ausgangspunkt. Entsteht ein eigenständiges Java-KI-System oder soll die Architektur unabhängig von Spring bleiben, ist LangChain4j eine sehr interessante Alternative.
 
-LangChain4j bietet dagegen einen sehr überzeugenden Java First Ansatz und bleibt bei der Wahl des darunterliegenden Application Frameworks flexibler.
-
-RAG, Tool Calling, LLM Integration und andere zentrale Funktionen beherrschen beide.
-
-Deshalb würde ich bei einer Entscheidung zuerst die bestehende Anwendung betrachten.
-
-Läuft bereits ein größerer Teil der Infrastruktur auf Spring Boot, ist Spring AI für mich der naheliegende Ausgangspunkt.
-
-Wird dagegen ein eigenständiges Java AI System entwickelt oder soll die Architektur unabhängig von Spring bleiben, ist LangChain4j eine sehr interessante Alternative.
-
-Und manchmal ist die sinnvollste Entscheidung sogar noch einfacher:
-
-Baue mit beiden Frameworks einen kleinen Prototypen für deinen tatsächlichen Use Case.
-
-Nicht mit einem Hello World Chatbot, sondern mit einem realistischen Ausschnitt deiner späteren Anwendung.
-
-Ein RAG Prozess mit echten Dokumenten.
-Ein Tool Call gegen einen vorhandenen Service.
-Ein strukturierter Output, der anschließend von deiner Businesslogik verarbeitet wird.
-
-Nach diesem Test wird meistens sehr schnell deutlich, welches Programmiermodell besser zur eigenen Anwendung und zum eigenen Team passt.
+Manchmal ist die sinnvollste Entscheidung sogar noch einfacher: Baue mit beiden Frameworks einen kleinen Prototyp für deinen tatsächlichen Anwendungsfall. Nicht mit einem Hello-World-Chatbot, sondern mit einem realistischen Ausschnitt deiner späteren Anwendung: ein RAG-Prozess mit echten Dokumenten, ein Tool Call gegen einen vorhandenen Service, ein strukturierter Output, den deine Geschäftslogik anschließend verarbeitet. Nach diesem Test wird meist sehr schnell klar, welches Programmiermodell besser zur eigenen Anwendung und zum eigenen Team passt.
 
 ## Häufig gestellte Fragen zu Spring AI und LangChain4j
 
 ### Was ist besser, Spring AI oder LangChain4j?
 
-Für bestehende Spring Boot Anwendungen ist Spring AI häufig die naheliegendere Wahl, da es sehr tief in das Spring Ökosystem integriert ist. LangChain4j ist besonders interessant für Java Anwendungen, die nicht ausschließlich auf Spring setzen oder bei denen AI Funktionen einen zentralen Bestandteil der Architektur bilden. Einen allgemeinen Gewinner gibt es deshalb nicht.
+Für bestehende Spring-Boot-Anwendungen ist Spring AI häufig die naheliegendere Wahl, da es sehr tief ins Spring-Ökosystem integriert ist. LangChain4j ist besonders interessant für Java-Anwendungen, die nicht ausschließlich auf Spring setzen oder bei denen KI-Funktionen ein zentraler Teil der Architektur sind. Einen allgemeinen Gewinner gibt es deshalb nicht.
 
 ### Kann ich LangChain4j mit Spring Boot verwenden?
 
-Ja. LangChain4j bietet eigene Spring Boot Starter und unterstützt sowohl Spring Boot 3 als auch Spring Boot 4. AI Services, Chat Models, Tools und RAG Komponenten lassen sich in den Spring Application Context integrieren ([LangChain4j: Spring Boot Integration](https://docs.langchain4j.dev/tutorials/spring-boot-integration/)).
+Ja. LangChain4j bietet eigene Spring-Boot-Starter und unterstützt Spring Boot 3 und Spring Boot 4. AI Services, Chat Models, Tools und RAG-Komponenten lassen sich in den Spring Application Context integrieren ([LangChain4j: Spring Boot Integration](https://docs.langchain4j.dev/tutorials/spring-boot-integration/)).
 
 ### Unterstützt Spring AI RAG?
 
-Ja. Spring AI unterstützt Retrieval Augmented Generation und die Integration verschiedener Vector Stores. Dadurch können eigene Dokumente und Unternehmensdaten als zusätzlicher Kontext für Large Language Models verwendet werden.
+Ja. Spring AI unterstützt Retrieval Augmented Generation und die Integration verschiedener Vector Stores. Eigene Dokumente und Unternehmensdaten lassen sich so als zusätzlicher Kontext für Large Language Models verwenden.
 
 ### Unterstützt LangChain4j RAG?
 
-Ja. LangChain4j unterstützt sowohl einfache RAG Szenarien als auch komplexere Retrieval Pipelines. Über Komponenten wie `ContentRetriever` und `RetrievalAugmentor` können unter anderem Retrieval, Query Transformation und weitere Verarbeitungsschritte konfiguriert werden ([LangChain4j: AI Services](https://docs.langchain4j.dev/tutorials/ai-services/)).
+Ja. LangChain4j unterstützt einfache RAG-Szenarien ebenso wie komplexere Retrieval-Pipelines. Über Komponenten wie `ContentRetriever` und `RetrievalAugmentor` lassen sich unter anderem Retrieval, Query-Transformation und weitere Verarbeitungsschritte konfigurieren ([LangChain4j: AI Services](https://docs.langchain4j.dev/tutorials/ai-services/)).
 
 ### Unterstützen Spring AI und LangChain4j Tool Calling?
 
-Ja. Beide Java AI Frameworks können Java Funktionen als Tools für ein Large Language Model bereitstellen. Dadurch kann ein LLM beispielsweise Daten aus bestehenden Services abrufen oder Aktionen innerhalb einer Anwendung auslösen.
+Ja. Beide Frameworks können Java-Funktionen als Tools für ein Large Language Model bereitstellen. Ein LLM kann so zum Beispiel Daten aus bestehenden Services abrufen oder Aktionen innerhalb einer Anwendung auslösen.
 
-### Kann ich Generative AI komplett mit Java entwickeln?
+### Kann ich generative KI komplett mit Java entwickeln?
 
-Ja. Für viele Anwendungen ist Python heute keine Voraussetzung mehr. Mit Frameworks wie Spring AI und LangChain4j lassen sich LLM Integration, RAG, Tool Calling, Embeddings, Vector Stores und weitere Generative AI Funktionen direkt innerhalb einer Java Anwendung umsetzen.
+Ja. Für viele Anwendungen ist Python heute keine Voraussetzung mehr. Mit Frameworks wie Spring AI und LangChain4j lassen sich LLM-Integration, RAG, Tool Calling, Embeddings, Vector Stores und weitere Funktionen generativer KI direkt in einer Java-Anwendung umsetzen.
 
-### Welches Java LLM Framework eignet sich für Spring Boot?
+### Welches Java-LLM-Framework eignet sich für Spring Boot?
 
-Für reine Spring Boot Projekte würde ich Spring AI zuerst evaluieren. LangChain4j ist jedoch ebenfalls sehr gut mit Spring Boot integriert und kann insbesondere dann interessant sein, wenn die AI Services von LangChain4j besser zum gewünschten Programmiermodell passen.
+Für reine Spring-Boot-Projekte würde ich Spring AI zuerst evaluieren. LangChain4j ist aber ebenfalls sehr gut in Spring Boot integriert und kann besonders dann interessant sein, wenn seine AI Services besser zum gewünschten Programmiermodell passen.
 
 ### Kann ich mit Spring AI oder LangChain4j lokale LLMs verwenden?
 
-Ja. Beide Frameworks unterstützen Integrationen für lokale beziehungsweise selbst betriebene Modelle. Dadurch können beispielsweise Modelle über Ollama eingebunden werden, ohne die gesamte Anwendung direkt an einen kommerziellen Cloud Anbieter zu koppeln.
+Ja. Beide Frameworks unterstützen lokale beziehungsweise selbst betriebene Modelle. So lassen sich zum Beispiel Modelle über Ollama einbinden, ohne die gesamte Anwendung an einen kommerziellen Cloud-Anbieter zu koppeln.
