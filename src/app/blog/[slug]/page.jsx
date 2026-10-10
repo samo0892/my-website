@@ -159,6 +159,17 @@ export default async function BlogPost({ params }) {
               <p className="mt-6 rounded-lg border border-[#33353F] bg-[#181818] px-4 py-3 text-sm text-[#ADB7BE]">
                 <span className="font-semibold text-white">Getestet mit:</span>{" "}
                 {post.testedWith.join(" · ")}
+                {post.repo && (
+                  <>
+                    {" · "}
+                    <a
+                      href={post.repo}
+                      className="font-semibold text-emerald-400 underline underline-offset-4 hover:text-emerald-300"
+                    >
+                      Code auf GitHub
+                    </a>
+                  </>
+                )}
               </p>
             )}
           </header>

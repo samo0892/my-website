@@ -77,6 +77,9 @@ const readPost = (fileName) => {
     // Versionen, mit denen der Code des Artikels zuletzt gelaufen ist,
     // z. B. ["Spring AI 2.0.1", "Spring Boot 4.0.8"]. Steht oben im Artikel.
     testedWith: data.testedWith ?? [],
+    // Repository mit dem vollstaendigen Code zum Artikel. Steht im Kasten
+    // "Getestet mit".
+    repo: data.repo ?? null,
     // image: Hero-Bild im Artikel. ogImage: Titelkarte fuer Social und
     // Uebersicht, ohne im Artikel selbst den Titel zu doppeln.
     image: data.image ?? null,

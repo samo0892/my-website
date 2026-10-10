@@ -9,6 +9,9 @@ testedWith:
   - "Spring Boot 4.0.8"
   - "Java 21"
   - "PostgreSQL 17 mit pgvector"
+# Vollstaendiger, per CI getesteter Code zum Artikel. Steht als Link im
+# Kasten "Getestet mit".
+repo: "https://github.com/samo0892/spring-ai-rag-tutorial"
 tags: ["Java", "Spring Boot", "Spring AI", "RAG"]
 keywords:
   - "Spring AI RAG"
@@ -36,6 +39,8 @@ Mit RAG kannst du Large Language Models um Informationen aus eigenen Datenquelle
 In diesem Tutorial entwickeln wir eine vollständige **Spring AI RAG**-Anwendung mit Java, Spring Boot, PostgreSQL und pgvector. Wir verarbeiten eigene Dokumente, erstellen Embeddings, speichern diese in einer Vektordatenbank und nutzen die gefundenen Informationen zur Beantwortung von Benutzerfragen.
 
 Dabei geht es nicht nur um die Integration eines LLMs, sondern auch um eine sinnvolle Architektur für reale Backend-Anwendungen.
+
+Den vollständigen Code findest du im GitHub-Repository [samo0892/spring-ai-rag-tutorial](https://github.com/samo0892/spring-ai-rag-tutorial). Es enthält alle Klassen aus diesem Artikel, eine Beispieldokumentation zum Ausprobieren und einen Integrationstest, der ohne OpenAI-Key läuft.
 
 ## Was ist Retrieval Augmented Generation (RAG)?
 
@@ -1179,9 +1184,10 @@ Spring AI bietet eine solide technische Grundlage für produktive RAG-Anwendunge
 
 Für die technischen Implementierungsdetails sind insbesondere die offiziellen Referenzen relevant:
 
+- [Code zu diesem Tutorial auf GitHub](https://github.com/samo0892/spring-ai-rag-tutorial)
 - [Spring AI: Retrieval Augmented Generation](https://docs.spring.io/spring-ai/reference/api/retrieval-augmented-generation.html)
 - [Spring AI: pgvector Vector Store](https://docs.spring.io/spring-ai/reference/api/vectordbs/pgvector.html)
 - [Spring AI: ETL Pipeline und Document Readers](https://docs.spring.io/spring-ai/reference/api/etl-pipeline.html)
 - [Spring AI: OpenAI Embeddings](https://docs.spring.io/spring-ai/reference/api/embeddings/openai-embeddings.html)
 
-**Technischer Hinweis:** Die Codebeispiele beziehen sich auf Spring AI 2.0.1 und Spring Boot 4.0.8. Sie wurden als zusammenhängendes Maven-Projekt kompiliert, und die Anwendung wurde gegen PostgreSQL 17 mit pgvector gestartet. Dabei legt Spring AI das beschriebene Schema samt HNSW-Index an.
+**Technischer Hinweis:** Die Codebeispiele beziehen sich auf Spring AI 2.0.1 und Spring Boot 4.0.8. Sie wurden als zusammenhängendes Maven-Projekt kompiliert, und die Anwendung wurde gegen PostgreSQL 17 mit pgvector gestartet. Dabei legt Spring AI das beschriebene Schema samt HNSW-Index an. Das Projekt liegt im [GitHub-Repository](https://github.com/samo0892/spring-ai-rag-tutorial); dort prüft eine GitHub Action bei jeder Änderung mit einem Integrationstest gegen pgvector, dass Upload, Speicherung und Fragebeantwortung zusammenspielen.
