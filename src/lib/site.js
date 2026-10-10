@@ -18,7 +18,7 @@ export const AUTHOR = {
   name: "Samed Baldede",
   url: `${SITE_URL}/#about`,
   github: "https://github.com/samo0892/",
-  linkedin: "https://de.linkedin.com/in/samed-baldede",
+  linkedin: "https://www.linkedin.com/in/samed-baldede",
 };
 
 export const BOOKING_URL =
