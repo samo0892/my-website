@@ -14,21 +14,17 @@ import {
   getPost,
   formatDate,
   isoDateTime,
+  socialImageFor,
 } from "../../../lib/blog";
 import {
   SITE_NAME,
   AUTHOR,
   FEED_ALTERNATE,
-  DEFAULT_OG_IMAGE,
 } from "../../../lib/site";
 import { postGraph } from "../../../lib/schema";
 
 export const generateStaticParams = () =>
   getAllPosts().map((post) => ({ slug: post.slug }));
-
-// Titelkarten und Hero-Bilder sind 1200x630, ebenso das Standardbild.
-const socialImageFor = (post) =>
-  post.ogImage ?? post.image ?? DEFAULT_OG_IMAGE.url;
 
 export function generateMetadata({ params }) {
   const post = getPost(params.slug);
@@ -85,7 +81,7 @@ export default function BlogPost({ params }) {
 
   return (
     <main className="flex min-h-screen flex-col bg-[#121212]">
-      <JsonLd data={postGraph({ post, image: socialImageFor(post) })} />
+      <JsonLd data={postGraph(post)} />
       <Navbar />
       <div className="container mt-24 mx-auto px-6 md:px-12 py-4">
         <article className="max-w-3xl mx-auto">

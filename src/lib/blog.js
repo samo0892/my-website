@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
+import { DEFAULT_OG_IMAGE } from "./site";
 
 const POSTS_DIR = path.join(process.cwd(), "content", "blog");
 const PUBLIC_DIR = path.join(process.cwd(), "public");
@@ -54,6 +55,10 @@ const readPost = (fileName) => {
     readingTime: readingTime(content),
   };
 };
+
+// Titelkarten und Hero-Bilder sind 1200x630, ebenso das Standardbild.
+export const socialImageFor = (post) =>
+  post.ogImage ?? post.image ?? DEFAULT_OG_IMAGE.url;
 
 export const getAllPosts = () =>
   fs
