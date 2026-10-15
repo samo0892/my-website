@@ -1,0 +1,379 @@
+---
+title: "Spring Boot: Locks und Deadlocks mit @Transactional vermeiden"
+description: "Warum blockieren sich Transaktionen in Spring Boot? Mit PostgreSQL-Beispiel, JPA-Locking und Best Practices für @Transactional Deadlocks vermeiden."
+shortAnswer: "@Transactional legt nur Transaktionsgrenzen fest, die Sperren entstehen durch die SQL-Anweisungen darin. Einen Deadlock verhinderst du vor allem, indem alle Schreibzugriffe Datensätze in derselben Reihenfolge sperren und Transaktionen keine langsamen externen Aufrufe enthalten. Wartezeiten begrenzt du mit Timeouts, verbleibende Deadlocks wiederholst du gezielt in einer frischen Transaktion."
+date: "2026-10-15"
+ogImage: "/images/og/spring-boot-transactional-deadlocks-vermeiden.png"
+tags: ["Java", "Spring Boot", "JPA", "PostgreSQL"]
+keywords:
+  - "Spring Boot Deadlock"
+  - "Spring Boot Transactional"
+  - "Spring Transaction Deadlock"
+  - "Datenbank Locks vermeiden"
+  - "Pessimistic Locking JPA"
+  - "Optimistic Locking JPA"
+  - "PostgreSQL Deadlock"
+service: "mvp-entwicklung"
+serviceText: "Deine Spring-Boot-Anwendung wird unter Last langsam, oder Deadlocks tauchen erst in Produktion auf? Ich analysiere mit dir Transaktionsgrenzen und Sperrverhalten und setze die Lösung um, abgesichert durch Integrationstests gegen eine echte Datenbank."
+---
+
+Eine Spring-Boot-Anwendung läuft lokal problemlos. Doch sobald mehrere Requests gleichzeitig dieselben Daten ändern, steigen die Antwortzeiten. Einzelne Operationen hängen, Datenbankverbindungen bleiben belegt und irgendwann erscheint im Log die Meldung `deadlock detected`.
+
+Häufig fällt der erste Verdacht auf `@Transactional`: Blockieren sich die annotierten Methoden gegenseitig?
+
+Die Ursache liegt im Zusammenspiel zwischen Transaktionsgrenzen, ausgeführten SQL-Anweisungen und Datenbanksperren. Wer diese Zusammenhänge versteht, kann unnötige Wartezeiten reduzieren und Deadlocks gezielt behandeln.
+
+In diesem Artikel reproduzieren wir einen Deadlock mit PostgreSQL und übertragen die Lösung auf einen Spring-Boot-Service. Anschließend geht es um kurze Transaktionen, Locking-Strategien, `REQUIRES_NEW` und die Diagnose im laufenden System.
+
+## Was macht @Transactional in Spring Boot?
+
+Mit Springs `@Transactional` definierst du, unter welchen Transaktionsbedingungen eine Methode ausgeführt wird:
+
+```java
+import org.springframework.transaction.annotation.Transactional;
+
+@Transactional
+public void transfer(long fromId, long toId, BigDecimal amount) {
+    // Zusammengehörige Datenbankänderungen
+}
+```
+
+Bei der üblichen proxybasierten Konfiguration übernimmt Spring die Transaktionsverwaltung für einen Aufruf über den Spring-Proxy. Standardmäßig wird eine vorhandene Transaktion verwendet oder eine neue gestartet. Eine normale Rückkehr führt bei einer neu gestarteten Transaktion zum Commit; unbehandelte RuntimeExceptions führen standardmäßig zum Rollback. Für Checked Exceptions gelten andere Standardregeln. [[1]][q1][[2]][q2]
+
+Die Annotation sperrt dabei weder die Java-Methode noch pauschal eine Datenbanktabelle. Welche Sperren entstehen, hängt von den Datenbankoperationen ab.
+
+Für die Beispiele verwenden wir Spring Boot mit Spring Data JPA, Jakarta Persistence und PostgreSQL. Die Java-Ausschnitte zeigen die relevanten Anwendungsteile und setzen ein entsprechend konfiguriertes Projekt voraus.
+
+## Blockierung und Deadlock: der entscheidende Unterschied
+
+Wenn zwei Transaktionen dieselbe Zeile ändern, kann eine auf die andere warten. Das ist zunächst ein normaler Sperrkonflikt.
+
+Ein Deadlock entsteht durch eine zyklische Abhängigkeit:
+
+| Schritt | Transaktion A | Transaktion B |
+| --- | --- | --- |
+| 1 | Sperrt Konto 1 | Sperrt Konto 2 |
+| 2 | Benötigt Konto 2 und wartet auf B | Benötigt Konto 1 und wartet auf A |
+| 3 | Kann nicht fortfahren | Kann nicht fortfahren |
+
+PostgreSQL erkennt solche Zyklen und bricht eine beteiligte Transaktion ab. Deadlocks können auch bei gewöhnlichen Updates auftreten; explizite Sperranweisungen sind keine Voraussetzung. [[3]][q3]
+
+Das Ziel ist deshalb, unnötige Konflikte zu reduzieren und verbleibende Fehler kontrolliert zu behandeln.
+
+## Einen PostgreSQL-Deadlock reproduzieren
+
+Für das Beispiel benötigen wir zwei Konten. Führe dieses Setup in einer Testdatenbank einmalig aus:
+
+```sql
+CREATE TABLE account (
+    id BIGINT PRIMARY KEY,
+    balance NUMERIC(19, 2) NOT NULL CHECK (balance >= 0)
+);
+
+INSERT INTO account (id, balance)
+VALUES (1, 1000.00), (2, 1000.00);
+```
+
+Öffne zwei voneinander unabhängige SQL-Verbindungen. Führe zunächst in Verbindung A aus:
+
+```sql
+BEGIN;
+UPDATE account SET balance = balance - 100 WHERE id = 1;
+```
+
+Anschließend in Verbindung B:
+
+```sql
+BEGIN;
+UPDATE account SET balance = balance - 50 WHERE id = 2;
+```
+
+Jetzt fordert A die zweite Zeile an:
+
+```sql
+UPDATE account SET balance = balance + 100 WHERE id = 2;
+```
+
+Die Anweisung wartet. Führe währenddessen in B aus:
+
+```sql
+UPDATE account SET balance = balance + 50 WHERE id = 1;
+```
+
+Damit ist der Zyklus vollständig. In einer Sitzung erscheint nach der Deadlock-Erkennung ein Fehler mit SQLSTATE `40P01`. Welche Transaktion abgebrochen wird, solltest du nicht voraussetzen. [[3]][q3]
+
+Beende den Versuch in beiden Sitzungen mit `ROLLBACK`, auch wenn eine Sitzung nach dem Abbruch der anderen bereits weiterlaufen konnte. So bleiben die Ausgangssalden erhalten.
+
+## Lösung 1: Datensätze in konsistenter Reihenfolge sperren
+
+Für unsere Umbuchung legen wir eine einfache Regel fest: Zuerst wird das Konto mit der kleineren ID gesperrt, anschließend das mit der größeren ID. Die fachliche Überweisungsrichtung bleibt davon unabhängig.
+
+Das Entity-Modell:
+
+```java
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import java.math.BigDecimal;
+
+@Entity
+public class Account {
+    @Id
+    private Long id;
+    private BigDecimal balance;
+
+    protected Account() {}
+
+    public Long getId() {
+        return id;
+    }
+
+    public void debit(BigDecimal amount) {
+        if (balance.compareTo(amount) < 0) {
+            throw new IllegalStateException("Insufficient balance");
+        }
+        balance = balance.subtract(amount);
+    }
+
+    public void credit(BigDecimal amount) {
+        balance = balance.add(amount);
+    }
+}
+```
+
+Im Repository deklarieren wir einen pessimistischen Schreib-Lock. Spring Data JPA unterstützt die Festlegung des Lock-Modus über `@Lock`. [[4]][q4]
+
+```java
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import java.util.Optional;
+
+public interface AccountRepository extends JpaRepository<Account, Long> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Account a where a.id = :id")
+    Optional<Account> findByIdForUpdate(@Param("id") long id);
+}
+```
+
+Der Service lädt beide Konten ausdrücklich in der festgelegten Reihenfolge:
+
+```java
+import java.math.BigDecimal;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class TransferService {
+    private final AccountRepository accounts;
+
+    public TransferService(AccountRepository accounts) {
+        this.accounts = accounts;
+    }
+
+    @Transactional
+    public void transfer(long fromId, long toId, BigDecimal amount) {
+        if (fromId == toId) {
+            throw new IllegalArgumentException("Accounts must differ");
+        }
+        if (amount == null || amount.signum() <= 0 || amount.scale() > 2) {
+            throw new IllegalArgumentException("Invalid amount");
+        }
+
+        Account first = lock(Math.min(fromId, toId));
+        Account second = lock(Math.max(fromId, toId));
+
+        Account source = first.getId().longValue() == fromId ? first : second;
+        Account target = first.getId().longValue() == toId ? first : second;
+
+        source.debit(amount);
+        target.credit(amount);
+    }
+
+    private Account lock(long id) {
+        return accounts.findByIdForUpdate(id)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown account"));
+    }
+}
+```
+
+Die Entities werden innerhalb der Transaktion geladen und verändert. Zusätzliche `save()`-Aufrufe sind für diese verwalteten Entities nicht erforderlich; JPA synchronisiert ihre Änderungen beim Flush. [[5]][q5]
+
+Mit dieser Reihenfolge entfernen wir den gezeigten Zyklus zwischen den beiden Kontosperren. Andere Konflikte bleiben möglich, etwa durch weitere Tabellen, Trigger oder abweichende Zugriffspfade. Die Regel muss deshalb für alle beteiligten Schreiboperationen gelten.
+
+## Lösung 2: Transaktionen auf die notwendige Arbeit begrenzen
+
+Eine häufige Ursache für lange Sperrzeiten sind externe Aufrufe innerhalb einer Datenbanktransaktion.
+
+Stell dir einen Bestellprozess vor, der zuerst einen Lagerbestand ändert und anschließend innerhalb derselben Transaktion einen Zahlungsanbieter aufruft. Benötigt der Zahlungsaufruf mehrere Sekunden, verlängert sich der Zeitraum, in dem andere Vorgänge auf die gesperrten Daten warten können.
+
+Mein Vorgehen bei einem solchen Service:
+
+1. Unabhängige Vorbereitung und externe Lesezugriffe vor die Transaktion verschieben.
+2. Veränderliche, fachlich relevante Bedingungen innerhalb der Transaktion erneut prüfen.
+3. Zusammengehörige Datenbankänderungen gemeinsam ausführen.
+4. Folgeprozesse über einen bewusst entworfenen Ablauf anstoßen.
+
+Der zweite Punkt ist entscheidend: Ein vorab gelesener Lagerbestand kann beim späteren Schreiben bereits veraltet sein. Die Verkürzung der Transaktion darf keine Race Condition einführen.
+
+Ebenso wenig reicht es, einen Zahlungsaufruf einfach hinter den Commit zu verschieben. Scheitert der Aufruf dort, bleibt die Bestellung bereits gespeichert. Für solche Abläufe brauchst du fachliche Zustände, Idempotenz und gegebenenfalls ein Outbox-Verfahren mit wiederholbarer Verarbeitung.
+
+Kurze Transaktionen sind ein Architekturziel. Sie ersetzen keine Entscheidung darüber, wie ein Geschäftsprozess mit Teilausfällen umgeht.
+
+## Lösung 3: Optimistic und Pessimistic Locking bewusst auswählen
+
+Unser Beispiel sperrt Konten vor der Änderung. Eine Alternative ist Optimistic Locking mit einer Versionsspalte:
+
+```java
+@Version
+private Long version;
+```
+
+Für das bestehende SQL-Schema wäre dafür eine passende Migration nötig. JPA verwendet die Version, um konkurrierende Änderungen zu erkennen. Bei einem Versionskonflikt schlägt die Aktualisierung fehl und die Anwendung muss den Konflikt behandeln. [[5]][q5]
+
+| Strategie | Sinnvoller Ausgangspunkt | Was du einplanen musst |
+| --- | --- | --- |
+| Optimistic Locking | Konflikte treten selten auf | Versionskonflikte und erneute Verarbeitung |
+| Pessimistic Locking | Fachlich eng umkämpfte Datensätze | Sperrreihenfolge, Wartezeiten und Timeouts |
+
+Diese Tabelle ist eine Entscheidungshilfe, keine allgemeingültige Leistungsregel. Für einen selten bearbeiteten Stammdatensatz würde ich zunächst Optimistic Locking prüfen. Bei einer stark umkämpften Reservierung würde ich zusätzlich eine gezielte Sperre oder ein bedingtes atomares Update untersuchen.
+
+Auch Optimistic Locking beseitigt nicht alle Datenbanksperren: Updates müssen weiterhin von der Datenbank koordiniert werden. [[3]][q3][[5]][q5]
+
+## Warum REQUIRES_NEW das Problem verschärfen kann
+
+Eine zusätzliche Transaktion klingt zunächst nach Entkopplung:
+
+```java
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public void writeAuditEntry() {
+    // Unabhängige Transaktion
+}
+```
+
+Bei einer tatsächlich über den Proxy aufgerufenen inneren Methode startet `REQUIRES_NEW` eine unabhängige physische Transaktion. Die äußere behält währenddessen ihre Ressourcen; die innere benötigt beim üblichen JDBC/JPA-Setup eine weitere Verbindung. Bei mehreren parallelen Aufrufen kann dadurch der Connection-Pool erschöpft werden. [[2]][q2]
+
+Außerdem gibt das Pausieren der äußeren Transaktion ihre Datenbanksperren nicht frei. Benötigt die innere Transaktion einen von außen gesperrten Datensatz, kann sie darauf warten, während der Anwendungsthread auf den Abschluss des inneren Aufrufs wartet. Ein größerer Pool löst diesen Sperrkonflikt nicht.
+
+Setze `REQUIRES_NEW` deshalb für bewusst unabhängige Arbeit ein, deren Commit- und Rollback-Verhalten fachlich gewollt ist.
+
+Beachte außerdem Springs Proxy-Verhalten: Ein interner Aufruf über `this.writeAuditEntry()` aktiviert in der Standardkonfiguration keine neue Transaktionsgrenze. Eine separate Spring-Bean macht den beabsichtigten Proxy-Aufruf deutlich. [[1]][q1]
+
+## Wartezeiten mit passenden Timeouts begrenzen
+
+Für PostgreSQL lassen sich innerhalb einer Transaktion beispielsweise folgende Grenzen setzen:
+
+```sql
+SET LOCAL lock_timeout = '2s';
+SET LOCAL statement_timeout = '5s';
+```
+
+`lock_timeout` begrenzt das Warten auf einen einzelnen Sperrerwerb. `statement_timeout` begrenzt die Dauer einer SQL-Anweisung insgesamt. `SET LOCAL` beschränkt die Einstellung auf die aktuelle Transaktion. Die Werte sind Beispiele und müssen zu deinen Antwortzeitzielen passen. [[6]][q6][[9]][q9]
+
+Timeouts machen überlange Wartezeiten zu behandelbaren Fehlern. Die Ursache des Sperrkonflikts beseitigen sie nicht.
+
+Ein Spring-Transaktions-Timeout, ein HTTP-Timeout und ein Connection-Pool-Timeout betreffen unterschiedliche Ebenen. Ich würde sie ausdrücklich aufeinander abstimmen und das tatsächliche Verhalten mit dem eingesetzten Transaktionsmanager und Treiber prüfen.
+
+## Deadlocks gezielt wiederholen
+
+Auch nach Verbesserungen solltest du einen Deadlock als möglichen Fehlerfall behandeln. Für PostgreSQL ist SQLSTATE `40P01` ein eindeutiger Ausgangspunkt für die Fehlerklassifikation. [[3]][q3]
+
+Mein Vorschlag für die Umsetzung:
+
+- Wiederhole nur ausdrücklich als vorübergehend eingestufte Konflikte.
+- Starte für jeden Versuch eine frische Transaktion.
+- Begrenze die Versuche, beispielsweise auf drei insgesamt.
+- Nutze eine kurze, wachsende Pause mit zufälliger Streuung.
+- Verhindere doppelte externe Nebenwirkungen durch Idempotenz.
+
+Die Retry-Steuerung gehört außerhalb der fehlgeschlagenen Transaktion. Ein nichttransaktionaler Koordinator kann dafür bei jedem Versuch erneut die transaktionale Methode einer separaten Spring-Bean aufrufen.
+
+Eine pauschale Wiederholung jeder `DataAccessException` würde dagegen auch Fehler erneut ausführen, die dadurch nicht verschwinden. Welche Spring-Exception tatsächlich ankommt, sollte ein Integrationstest für die konkrete Kombination aus JPA-Provider und Treiber absichern.
+
+## Blockierende Transaktionen in PostgreSQL finden
+
+Im laufenden System hilft eine Abfrage auf aktive Sitzungen und ihre Blockierer:
+
+```sql
+SELECT
+    pid,
+    now() - xact_start AS transaction_age,
+    state,
+    wait_event_type,
+    wait_event,
+    pg_blocking_pids(pid) AS blocking_pids,
+    query
+FROM pg_stat_activity
+WHERE datname = current_database()
+  AND cardinality(pg_blocking_pids(pid)) > 0
+ORDER BY xact_start;
+```
+
+`pg_stat_activity` liefert Sitzungs- und Wartezustände; `pg_blocking_pids()` nennt die blockierenden Prozesse. Für vollständige Einblicke können zusätzliche Monitoring-Berechtigungen erforderlich sein. [[7]][q7][[8]][q8]
+
+Die Abfrage ist eine Momentaufnahme wartender Sitzungen. Bereits aufgelöste Deadlocks findest du damit nicht rückwirkend. Ergänzend würde ich Datenbanklogs sowie Metriken zu Poolauslastung, Transaktionsdauer und Timeouts heranziehen.
+
+## Parallelität realistisch testen
+
+Ein Test mit nur einem Aufruf zeigt den Konflikt nicht. Für die Überweisungslogik würde ich einen Integrationstest gegen PostgreSQL vorsehen, beispielsweise mit Testcontainers.
+
+Zwei getrennte Threads sollen jeweils über den Spring-Proxy eine eigene Transaktion starten. Eine Barrier oder ein Latch steuert die Überschneidung; zufällige Sleeps sind dafür keine verlässliche Grundlage.
+
+Prüfe anschließend nicht nur, ob ein Fehler ausbleibt:
+
+- Bleibt die Gesamtsumme beider Konten erhalten?
+- Sind die erwarteten Buchungen vollständig ausgeführt?
+- Werden fehlgeschlagene Versuche vollständig zurückgerollt?
+- Endet die Verarbeitung innerhalb einer begrenzten Zeit?
+- Funktioniert die Retry-Grenze bei gezielt ausgelösten Konflikten?
+
+Für das fehlerhafte Szenario kannst du nach dem ersten Sperrerwerb synchronisieren und so den Zyklus erzwingen. Beim korrigierten Szenario darfst du diese Barrier nicht unverändert übernehmen: Der zweite Thread wartet dann bereits auf die erste Kontosperre und erreicht die Barrier nicht. Das würde einen künstlichen Teststillstand erzeugen.
+
+Die gezeigten Beispiele sind anhand der Dokumentation ausgearbeitet; sie wurden für diesen Artikel nicht als vollständiges Spring-Boot-Projekt ausgeführt.
+
+## Häufige Fragen zu @Transactional und Deadlocks
+
+### Verhindert @Transactional gleichzeitige Methodenaufrufe?
+
+Nein. Mehrere Threads können dieselbe Service-Methode aufrufen. Die Transaktionsverwaltung definiert keine Java-Monitor-Sperre für diese Methode.
+
+### Hilft readOnly = true gegen Deadlocks?
+
+`readOnly` beschreibt die beabsichtigte Verwendung einer Transaktion und kann Optimierungen ermöglichen. Es ist kein allgemeiner Schalter zur Deadlock-Vermeidung und keine universelle Schreibsperre auf Anwendungsebene. [[1]][q1]
+
+### Sollte ich @Transactional entfernen, wenn Requests warten?
+
+Prüfe zuerst, welche Änderungen atomar zusammengehören. Bei einer Umbuchung müssen Belastung und Gutschrift gemeinsam erfolgreich sein oder gemeinsam zurückgerollt werden. Eine schnellere Verarbeitung mit unvollständigen Buchungen wäre kein sinnvoller Tausch.
+
+### Verhindert eine größere Connection-Pool-Größe Datenbank-Deadlocks?
+
+Zusätzliche Verbindungen ändern keine zyklische Sperrabhängigkeit zwischen Datenbanktransaktionen. Poolengpässe und Datenbanksperren müssen getrennt diagnostiziert werden.
+
+## Fazit
+
+Wenn sich Transaktionen in Spring Boot blockieren, lohnt sich der Blick auf die tatsächlich ausgeführten SQL-Anweisungen und die Dauer der Transaktion. Für das gezeigte Kontobeispiel beseitigt eine konsistente Sperrreihenfolge den konkreten Deadlock-Zyklus.
+
+Für robuste Anwendungen kommen weitere Entscheidungen hinzu: kurze Transaktionsgrenzen, eine passende Locking-Strategie, begrenzte Wartezeiten und gezielte Wiederholungsversuche. Entscheidend ist, diese Maßnahmen mit den fachlichen Konsistenzanforderungen abzugleichen und unter echter Parallelität zu testen.
+
+## Quellen
+
+1. [Spring Framework: Using @Transactional][q1]
+2. [Spring Framework: Transaction Propagation][q2]
+3. [PostgreSQL: Explicit Locking und Deadlocks][q3]
+4. [Spring Data JPA: Locking][q4]
+5. [Jakarta Persistence 3.2: Spezifikation][q5]
+6. [PostgreSQL: Client Connection Defaults und Timeouts][q6]
+7. [PostgreSQL: Monitoring Statistics und pg_stat_activity][q7]
+8. [PostgreSQL: System Information Functions][q8]
+9. [PostgreSQL: SET][q9]
+
+[q1]: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html "Spring Framework: Using @Transactional"
+[q2]: https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html "Spring Framework: Transaction Propagation"
+[q3]: https://www.postgresql.org/docs/18/explicit-locking.html "PostgreSQL: Explicit Locking und Deadlocks"
+[q4]: https://docs.spring.io/spring-data/jpa/reference/jpa/locking.html "Spring Data JPA: Locking"
+[q5]: https://jakarta.ee/specifications/persistence/3.2/jakarta-persistence-spec-3.2.html "Jakarta Persistence 3.2: Spezifikation"
+[q6]: https://www.postgresql.org/docs/18/runtime-config-client.html "PostgreSQL: Client Connection Defaults und Timeouts"
+[q7]: https://www.postgresql.org/docs/18/monitoring-stats.html "PostgreSQL: Monitoring Statistics und pg_stat_activity"
+[q8]: https://www.postgresql.org/docs/18/functions-info.html "PostgreSQL: System Information Functions"
+[q9]: https://www.postgresql.org/docs/18/sql-set.html "PostgreSQL: SET"

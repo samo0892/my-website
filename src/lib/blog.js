@@ -29,7 +29,8 @@ const readingTime = (content) => {
 // Codebloecken. h3 laufen durch den Slugger mit, damit doppelte Titel
 // dieselbe Nummer bekommen wie in rehypeHeadingIds, landen aber nicht in
 // der Liste. Markdown in Ueberschriften (`code`, **fett**, Links) wird auf
-// den sichtbaren Text reduziert.
+// den sichtbaren Text reduziert. Unterstriche fallen nur am Wortrand weg,
+// wo sie hervorheben; in REQUIRES_NEW gehoeren sie zum Text.
 const headingsOf = (content) => {
   const slug = createSlugger();
   const headings = [];
@@ -44,7 +45,8 @@ const headingsOf = (content) => {
 
     const text = match[2]
       .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-      .replace(/[`*_]/g, "");
+      .replace(/[`*]/g, "")
+      .replace(/(^|[^\p{L}\p{N}])_+|_+(?=[^\p{L}\p{N}]|$)/gu, "$1");
     const id = slug(text);
     if (match[1] === "##") headings.push({ id, text });
   }
