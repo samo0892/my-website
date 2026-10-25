@@ -1,0 +1,991 @@
+---
+title: "Hexagonale Architektur mit Java und Spring Boot: Ports und Adapter einfach erklärt"
+metaTitle: "Hexagonale Architektur mit Java & Spring Boot erklärt"
+description: "Lerne, wie du die hexagonale Architektur mit Java und Spring Boot umsetzt. Ports und Adapter erklärt, mit PostgreSQL, Unit-Tests und typischen Fehlern."
+shortAnswer: "Die hexagonale Architektur trennt die Geschäftslogik von REST, Datenbank und anderen technischen Details. Der Anwendungskern definiert Ports als Interfaces: Eingehende Adapter wie ein REST Controller rufen sie auf, ausgehende Adapter wie ein Persistence Adapter mit Spring Data JPA implementieren sie. So zeigen die Abhängigkeiten nach innen, und der Kern lässt sich ohne Spring Application Context testen. Das lohnt sich vor allem bei fachlich komplexen, langlebigen Anwendungen; für einfache CRUD-Services reicht oft eine saubere Schichtenarchitektur."
+date: "2026-10-25"
+ogImage: "/images/og/hexagonale-architektur-java-spring-boot.png"
+tags: ["Java", "Spring Boot", "Architektur", "JPA"]
+keywords:
+  - "Hexagonale Architektur"
+  - "Hexagonale Architektur Java"
+  - "Hexagonale Architektur Spring Boot"
+  - "Ports and Adapters"
+  - "Ports und Adapter"
+  - "Spring Boot Architektur"
+  - "Clean Architecture Java"
+  - "Onion Architecture"
+service: "mvp-entwicklung"
+serviceText: "Deine Spring-Boot-Anwendung ist über Jahre gewachsen, und jede Änderung zieht Anpassungen durch alle Schichten? Ich trenne mit dir Geschäftslogik und Infrastruktur Schritt für Schritt, ohne Neuentwicklung von Grund auf und abgesichert durch Tests, sodass dein Team danach selbst weiterarbeiten kann."
+---
+
+Wer über längere Zeit an einer gewachsenen Spring-Boot-Anwendung arbeitet, kennt das Problem: Was als übersichtliche REST API beginnt, entwickelt sich irgendwann zu einem komplexen System aus Controllern, Services, Repositories und externen Schnittstellen.
+
+Anfangs funktioniert diese Struktur hervorragend. Doch mit zunehmender Komplexität entstehen Abhängigkeiten, die Änderungen erschweren. Geschäftslogik verteilt sich auf mehrere Schichten, Services greifen direkt auf technische Implementierungen zu und selbst einfache Unit-Tests benötigen plötzlich einen Spring Application Context.
+
+Genau hier setzt die **hexagonale Architektur** an.
+
+Sie verfolgt einen grundlegenden Gedanken: Die Geschäftslogik einer Anwendung sollte unabhängig davon funktionieren, über welche Schnittstelle sie aufgerufen wird oder wo ihre Daten gespeichert werden.
+
+In diesem Artikel zeige ich dir, wie du die hexagonale Architektur mit Java und Spring Boot implementierst, welche Rolle Ports und Adapter spielen und wann sich dieser Architekturansatz in der Praxis wirklich lohnt.
+
+## Was ist die hexagonale Architektur?
+
+Die hexagonale Architektur, auch als *Ports and Adapters Architecture* bezeichnet, wurde von Alistair Cockburn entwickelt.
+
+Im Gegensatz zu einer klassischen Schichtenarchitektur steht nicht die technische Struktur einer Anwendung im Mittelpunkt, sondern ihre Geschäftslogik.
+
+Die grundlegende Idee besteht darin, die Anwendung in einen unabhängigen Kern und austauschbare technische Komponenten aufzuteilen.
+
+Dabei unterscheidet man drei zentrale Bestandteile:
+
+- **Domain:** Enthält die fachlichen Modelle, Regeln und Geschäftslogik.
+- **Ports:** Definieren Schnittstellen, über die die Anwendung mit ihrer Umgebung kommuniziert.
+- **Adapter:** Implementieren die technische Kommunikation, beispielsweise über REST, Datenbanken oder externe APIs.
+
+Der entscheidende Unterschied zu vielen klassischen Architekturen liegt in der Richtung der Abhängigkeiten.
+
+Die Geschäftslogik kennt weder Spring Boot noch PostgreSQL oder HTTP. Stattdessen definieren Schnittstellen, welche Funktionen benötigt werden. Die technischen Implementierungen befinden sich außerhalb des Anwendungskerns.
+
+### Wie funktioniert die hexagonale Architektur?
+
+Stell dir eine Anwendung zur Verwaltung von Bestellungen vor.
+
+Ein Kunde erstellt über eine REST API eine Bestellung. Diese wird validiert und anschließend in einer Datenbank gespeichert.
+
+In einer hexagonalen Architektur durchläuft die Anfrage folgende Komponenten:
+
+```text
+REST Controller (eingehender Adapter)
+              |
+              v
+          Input Port
+              |
+              v
+      Application Service
+              |
+              v
+          Output Port
+              |
+              v
+   PostgreSQL Persistence Adapter
+```
+
+*Die Pfeile zeigen den Aufrufablauf, nicht die Richtung der Code-Abhängigkeiten.*
+
+Der REST Controller nimmt die HTTP-Anfrage entgegen und ruft einen definierten Input Port auf.
+
+Die Anwendung verarbeitet den Anwendungsfall und verwendet anschließend einen Output Port, um die Bestellung zu speichern.
+
+Erst der entsprechende Adapter entscheidet, wie die Speicherung technisch umgesetzt wird.
+
+**Wichtig:** Die Code-Abhängigkeiten zeigen dabei nach innen. Der Anwendungskern definiert die benötigten Schnittstellen, während die Adapter von diesen Schnittstellen abhängen.
+
+Dadurch lässt sich beispielsweise PostgreSQL durch eine andere Datenbank ersetzen, ohne die eigentliche Geschäftslogik anzupassen.
+
+## Ports und Adapter: Das Herzstück der hexagonalen Architektur
+
+Um die hexagonale Architektur richtig zu verstehen, müssen wir zunächst zwischen eingehenden und ausgehenden Ports unterscheiden.
+
+### Input Ports: Wie wird die Anwendung aufgerufen?
+
+Input Ports definieren die Funktionen, die eine Anwendung nach außen bereitstellt.
+
+Typische Beispiele sind:
+
+- Eine Bestellung erstellen
+- Einen Kunden registrieren
+- Eine Zahlung ausführen
+- Einen Warenkorb aktualisieren
+
+Ein Input Port ist in Java häufig ein einfaches Interface.
+
+```java
+public interface CreateOrderUseCase {
+
+    Order createOrder(CreateOrderCommand command);
+}
+```
+
+Dieses Interface beschreibt, welche Funktion die Anwendung bereitstellt.
+
+Es enthält keine Informationen über HTTP, JSON oder Spring Boot.
+
+Das ist bewusst so gewählt.
+
+Ob der Anwendungsfall später über eine REST API, einen Message Consumer oder einen automatisierten Hintergrundprozess aufgerufen wird, spielt für die Geschäftslogik keine Rolle.
+
+### Output Ports: Welche externen Funktionen werden benötigt?
+
+Output Ports definieren Abhängigkeiten, die der Anwendungskern benötigt, um einen Anwendungsfall auszuführen.
+
+Ein klassisches Beispiel ist die Persistierung von Daten.
+
+```java
+public interface OrderRepository {
+
+    Order save(Order order);
+
+    Optional<Order> findById(UUID id);
+}
+```
+
+Auch dieses Interface enthält keinerlei technische Details.
+
+Es definiert lediglich, dass Bestellungen gespeichert und geladen werden können.
+
+Die Implementierung könnte PostgreSQL, MongoDB oder eine In-Memory-Datenstruktur verwenden.
+
+Dasselbe Prinzip gilt für andere externe Dienste, etwa einen LLM-Provider. Wie ich den Modellzugriff hinter einer eigenen fachlichen Schnittstelle kapsle, zeige ich im Artikel [LLMs mit Spring Boot integrieren](/blog/llms-mit-spring-boot-integrieren#llm-provider-hinter-einer-eigenen-abstraktion-kapseln).
+
+### Adapter: Die Verbindung zur Außenwelt
+
+Adapter übernehmen die konkrete technische Implementierung.
+
+Ein eingehender Adapter könnte beispielsweise ein Spring REST Controller sein.
+
+Ein ausgehender Adapter könnte Spring Data JPA verwenden, um Daten in PostgreSQL zu speichern.
+
+Dadurch entsteht eine klare Trennung zwischen fachlicher Logik und technischer Infrastruktur.
+
+## Hexagonale Architektur mit Spring Boot implementieren
+
+Genug Theorie. Wir entwickeln jetzt eine kleine Anwendung zur Verwaltung von Bestellungen.
+
+Das Beispiel verwendet Java 21, Spring Boot, Spring Data JPA und PostgreSQL.
+
+Die Anwendung soll folgende Funktionen bereitstellen:
+
+1. Eine Bestellung erstellen
+2. Bestellungen in einer Datenbank speichern
+3. Eine Bestellung anhand ihrer ID abrufen
+
+Dabei konzentrieren wir uns auf die Architektur und verzichten bewusst auf zusätzliche Funktionen wie Authentifizierung oder komplexe Zahlungsprozesse.
+
+### 1. Projektstruktur definieren
+
+Eine mögliche Paketstruktur sieht folgendermaßen aus:
+
+```text
+com.example.orders
+│
+├── domain
+│   └── model
+│       └── Order.java
+│
+├── application
+│   ├── port
+│   │   ├── in
+│   │   │   ├── CreateOrderUseCase.java
+│   │   │   └── GetOrderUseCase.java
+│   │   └── out
+│   │       └── OrderRepository.java
+│   │
+│   └── service
+│       └── OrderService.java
+│
+├── adapter
+│   ├── in
+│   │   └── web
+│   │       └── OrderController.java
+│   │
+│   └── out
+│       └── persistence
+│           ├── OrderJpaEntity.java
+│           ├── SpringDataOrderRepository.java
+│           └── OrderPersistenceAdapter.java
+│
+└── config
+    └── BeanConfiguration.java
+```
+
+Diese Struktur trennt fachliche und technische Verantwortlichkeiten.
+
+Die Domain enthält ausschließlich das Geschäftsmodell.
+
+Die Application-Schicht definiert die Anwendungsfälle und benötigten Schnittstellen.
+
+Die Adapter-Schicht enthält technische Implementierungen.
+
+Die Konfiguration verbindet schließlich die einzelnen Komponenten miteinander.
+
+Für unser Beispiel reicht zunächst ein einzelnes Maven-Modul. In größeren Anwendungen können die Architekturgrenzen zusätzlich über separate Maven-Module abgesichert werden.
+
+### 2. Das Domain Model implementieren
+
+Wir beginnen mit dem wichtigsten Bestandteil: der Domain.
+
+Eine Bestellung besteht aus einer ID, einer Produktbezeichnung, einer Menge und einem Status.
+
+```java
+package com.example.orders.domain.model;
+
+import java.util.UUID;
+
+public class Order {
+
+    private final UUID id;
+    private final String product;
+    private final int quantity;
+    private OrderStatus status;
+
+    public Order(
+            UUID id,
+            String product,
+            int quantity,
+            OrderStatus status
+    ) {
+        if (id == null) {
+            throw new IllegalArgumentException(
+                "Order ID must not be null"
+            );
+        }
+
+        if (product == null || product.isBlank()) {
+            throw new IllegalArgumentException(
+                "Product must not be empty"
+            );
+        }
+
+        if (quantity <= 0) {
+            throw new IllegalArgumentException(
+                "Quantity must be greater than zero"
+            );
+        }
+
+        if (status == null) {
+            throw new IllegalArgumentException(
+                "Status must not be null"
+            );
+        }
+
+        this.id = id;
+        this.product = product;
+        this.quantity = quantity;
+        this.status = status;
+    }
+
+    public static Order create(
+            String product,
+            int quantity
+    ) {
+        return new Order(
+            UUID.randomUUID(),
+            product,
+            quantity,
+            OrderStatus.CREATED
+        );
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public String getProduct() {
+        return product;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public OrderStatus getStatus() {
+        return status;
+    }
+}
+```
+
+Der dazugehörige Status wird als Enum definiert.
+
+```java
+package com.example.orders.domain.model;
+
+public enum OrderStatus {
+    CREATED,
+    PROCESSING,
+    COMPLETED,
+    CANCELLED
+}
+```
+
+An dieser Stelle fällt bereits etwas Entscheidendes auf.
+
+Unsere Domain verwendet weder Spring-Annotationen noch JPA-spezifische Klassen.
+
+Die Bestellung ist ein gewöhnliches Java-Objekt.
+
+Damit lässt sich das Geschäftsmodell unabhängig von Spring Boot instanziieren, testen und weiterentwickeln.
+
+Die Validierung der Bestellmenge befindet sich außerdem direkt im Domain Model.
+
+Dadurch wird verhindert, dass ungültige Bestellungen entstehen, unabhängig davon, welcher Adapter die Bestellung erstellt.
+
+### 3. Input Ports definieren
+
+Als Nächstes definieren wir die Anwendungsfälle.
+
+Zunächst benötigen wir ein Command-Objekt, das die Informationen für eine neue Bestellung enthält.
+
+```java
+package com.example.orders.application.port.in;
+
+public record CreateOrderCommand(
+    String product,
+    int quantity
+) {}
+```
+
+Anschließend definieren wir den Input Port für das Erstellen einer Bestellung.
+
+```java
+package com.example.orders.application.port.in;
+
+import com.example.orders.domain.model.Order;
+
+public interface CreateOrderUseCase {
+
+    Order createOrder(CreateOrderCommand command);
+}
+```
+
+Für das Abrufen einer Bestellung erstellen wir einen weiteren Input Port.
+
+```java
+package com.example.orders.application.port.in;
+
+import com.example.orders.domain.model.Order;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public interface GetOrderUseCase {
+
+    Optional<Order> getOrder(UUID id);
+}
+```
+
+Die Interfaces beschreiben ausschließlich die fachlichen Funktionen unserer Anwendung.
+
+Sie wissen nicht, ob die Anfrage über HTTP, Kafka oder eine andere Schnittstelle eingeht.
+
+### 4. Output Port für die Persistenz erstellen
+
+Unsere Anwendung muss Bestellungen speichern und wieder laden können.
+
+Dafür definieren wir einen Output Port.
+
+```java
+package com.example.orders.application.port.out;
+
+import com.example.orders.domain.model.Order;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public interface OrderRepository {
+
+    Order save(Order order);
+
+    Optional<Order> findById(UUID id);
+}
+```
+
+Der Name `OrderRepository` ist bewusst gewählt.
+
+Aus fachlicher Sicht benötigen wir ein Repository für Bestellungen. Ob dahinter Spring Data JPA steht, ist für den Anwendungskern irrelevant.
+
+Ein häufiger Fehler besteht darin, direkt ein `JpaRepository` in der Application-Schicht zu verwenden.
+
+Dadurch würde die Geschäftslogik von Spring Data abhängig werden.
+
+Mit einem eigenen Output Port vermeiden wir diese Kopplung.
+
+### 5. Application Service implementieren
+
+Jetzt verbinden wir die einzelnen Bestandteile.
+
+Der Application Service implementiert unsere Input Ports und verwendet den Output Port zur Persistierung.
+
+```java
+package com.example.orders.application.service;
+
+import com.example.orders.application.port.in.*;
+import com.example.orders.application.port.out.OrderRepository;
+import com.example.orders.domain.model.Order;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public class OrderService
+        implements CreateOrderUseCase, GetOrderUseCase {
+
+    private final OrderRepository orderRepository;
+
+    public OrderService(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+
+    @Override
+    public Order createOrder(CreateOrderCommand command) {
+
+        Order order = Order.create(
+            command.product(),
+            command.quantity()
+        );
+
+        return orderRepository.save(order);
+    }
+
+    @Override
+    public Optional<Order> getOrder(UUID id) {
+        return orderRepository.findById(id);
+    }
+}
+```
+
+Der Service kennt lediglich das `OrderRepository`-Interface.
+
+Er weiß nicht, welche Datenbank verwendet wird.
+
+Auch Spring Boot spielt hier keine Rolle.
+
+Wir könnten diesen Service vollständig ohne Spring Application Context testen.
+
+Das ist einer der größten praktischen Vorteile der hexagonalen Architektur.
+
+## PostgreSQL über einen Persistence Adapter anbinden
+
+Nachdem der Anwendungskern implementiert ist, kümmern wir uns um die technische Persistierung.
+
+Dafür verwenden wir Spring Data JPA.
+
+### 6. JPA Entity erstellen
+
+Zunächst benötigen wir eine Entity, die unsere Datenbankstruktur repräsentiert.
+
+```java
+package com.example.orders.adapter.out.persistence;
+
+import jakarta.persistence.*;
+import java.util.UUID;
+
+@Entity
+@Table(name = "orders")
+public class OrderJpaEntity {
+
+    @Id
+    private UUID id;
+
+    private String product;
+
+    private int quantity;
+
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status;
+
+    protected OrderJpaEntity() {
+    }
+
+    public OrderJpaEntity(
+            UUID id,
+            String product,
+            int quantity,
+            OrderStatus status
+    ) {
+        this.id = id;
+        this.product = product;
+        this.quantity = quantity;
+        this.status = status;
+    }
+
+    // Getter
+}
+```
+
+Für diese Klasse benötigen wir außerdem den Import von `OrderStatus` aus unserem Domain-Paket sowie Getter für die vier Felder.
+
+Warum verwenden wir nicht einfach unser Domain-Objekt als JPA Entity?
+
+Weil wir dadurch eine technische Abhängigkeit in die Domain einführen würden.
+
+Eine separate Persistence Entity ermöglicht es uns, das Datenbankschema unabhängig vom Geschäftsmodell weiterzuentwickeln.
+
+Dieser zusätzliche Mapping-Aufwand ist bewusst gewählt.
+
+### 7. Spring Data Repository definieren
+
+Nun erstellen wir ein gewöhnliches Spring Data JPA Repository.
+
+```java
+package com.example.orders.adapter.out.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.UUID;
+
+public interface SpringDataOrderRepository
+        extends JpaRepository<OrderJpaEntity, UUID> {
+}
+```
+
+Dieses Repository ist ausschließlich innerhalb des Persistence Adapters sichtbar beziehungsweise für dessen Implementierung vorgesehen.
+
+Die Application-Schicht verwendet es nicht direkt.
+
+### 8. Persistence Adapter implementieren
+
+Jetzt verbinden wir unseren Output Port mit Spring Data JPA.
+
+```java
+package com.example.orders.adapter.out.persistence;
+
+import com.example.orders.application.port.out.OrderRepository;
+import com.example.orders.domain.model.Order;
+
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+import java.util.UUID;
+
+@Component
+public class OrderPersistenceAdapter
+        implements OrderRepository {
+
+    private final SpringDataOrderRepository repository;
+
+    public OrderPersistenceAdapter(
+            SpringDataOrderRepository repository
+    ) {
+        this.repository = repository;
+    }
+
+    @Override
+    public Order save(Order order) {
+
+        OrderJpaEntity entity = new OrderJpaEntity(
+            order.getId(),
+            order.getProduct(),
+            order.getQuantity(),
+            order.getStatus()
+        );
+
+        OrderJpaEntity saved = repository.save(entity);
+
+        return toDomain(saved);
+    }
+
+    @Override
+    public Optional<Order> findById(UUID id) {
+        return repository.findById(id)
+                .map(this::toDomain);
+    }
+
+    private Order toDomain(OrderJpaEntity entity) {
+        return new Order(
+            entity.getId(),
+            entity.getProduct(),
+            entity.getQuantity(),
+            entity.getStatus()
+        );
+    }
+}
+```
+
+Der Adapter übernimmt zwei Aufgaben.
+
+Er kommuniziert mit der Datenbank und konvertiert zwischen Domain Model und Persistence Entity.
+
+Die eigentliche Geschäftslogik bleibt vollständig unangetastet.
+
+Sollten wir später PostgreSQL durch MongoDB ersetzen, müssten wir lediglich einen neuen Adapter implementieren.
+
+Unsere Input Ports, Output Ports und Application Services könnten unverändert bleiben.
+
+## REST API als eingehenden Adapter implementieren
+
+Bisher haben wir unsere Geschäftslogik und die Datenbankanbindung implementiert.
+
+Jetzt benötigen wir eine Möglichkeit, die Anwendung von außen aufzurufen.
+
+Dafür erstellen wir einen REST Controller.
+
+### 9. REST Controller erstellen
+
+```java
+package com.example.orders.adapter.in.web;
+
+import com.example.orders.application.port.in.*;
+import com.example.orders.domain.model.Order;
+
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/orders")
+public class OrderController {
+
+    private final CreateOrderUseCase createOrderUseCase;
+    private final GetOrderUseCase getOrderUseCase;
+
+    public OrderController(
+            CreateOrderUseCase createOrderUseCase,
+            GetOrderUseCase getOrderUseCase
+    ) {
+        this.createOrderUseCase = createOrderUseCase;
+        this.getOrderUseCase = getOrderUseCase;
+    }
+
+    @PostMapping
+    public ResponseEntity<Order> createOrder(
+            @RequestBody CreateOrderCommand command
+    ) {
+        Order order = createOrderUseCase.createOrder(command);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(order);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Order> getOrder(
+            @PathVariable UUID id
+    ) {
+        return getOrderUseCase.getOrder(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() ->
+                    ResponseEntity.notFound().build()
+                );
+    }
+}
+```
+
+Der Controller verwendet ausschließlich die Input Ports.
+
+Er kennt weder den Application Service als konkrete Implementierung noch das Spring Data Repository.
+
+Für ein produktives System würde ich zusätzlich separate Request- und Response-DTOs verwenden. Dadurch wären auch die HTTP-Datenstrukturen vom Domain Model entkoppelt.
+
+Außerdem sollten ungültige Eingaben über ein zentrales Exception Handling in passende HTTP-Fehlerantworten übersetzt werden.
+
+Für unser Architekturbeispiel halten wir den Controller bewusst kompakt.
+
+### 10. Dependency Injection konfigurieren
+
+Unser `OrderService` besitzt keine Spring-Annotation.
+
+Damit Spring Boot ihn trotzdem verwenden kann, registrieren wir ihn über eine Konfigurationsklasse.
+
+```java
+package com.example.orders.config;
+
+import com.example.orders.application.port.in.*;
+import com.example.orders.application.port.out.OrderRepository;
+import com.example.orders.application.service.OrderService;
+
+import org.springframework.context.annotation.*;
+
+@Configuration
+public class BeanConfiguration {
+
+    @Bean
+    public OrderService orderService(
+            OrderRepository orderRepository
+    ) {
+        return new OrderService(orderRepository);
+    }
+}
+```
+
+Spring erkennt den Persistence Adapter über `@Component` und stellt ihn dem Application Service zur Verfügung.
+
+Da `OrderService` beide Input Ports implementiert, kann Spring ihn auch in den REST Controller injizieren.
+
+Unsere Geschäftslogik bleibt weiterhin vollständig unabhängig vom Framework.
+
+### 11. PostgreSQL konfigurieren
+
+In der `application.yml` hinterlegen wir die Datenbankverbindung.
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/orders
+    username: postgres
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+```
+
+Die benötigten Dependencies sind `spring-boot-starter-webmvc` (bis Spring Boot 3: `spring-boot-starter-web`), `spring-boot-starter-data-jpa` und der PostgreSQL JDBC Driver.
+
+Das Datenbankschema muss bei `ddl-auto: validate` bereits existieren. In einer produktiven Anwendung würde ich dafür Flyway oder Liquibase verwenden.
+
+Nach dem Start können wir unsere REST API testen.
+
+Eine Bestellung erstellen:
+
+```bash
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product": "Mechanical Keyboard",
+    "quantity": 2
+  }'
+```
+
+Eine mögliche Antwort:
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "product": "Mechanical Keyboard",
+  "quantity": 2,
+  "status": "CREATED"
+}
+```
+
+Damit haben wir eine kleine Spring-Boot-Anwendung entwickelt, deren Geschäftslogik vollständig von REST und Datenbanktechnologien getrennt ist.
+
+## Hexagonale Architektur richtig testen
+
+Ein wesentlicher Vorteil dieser Architektur ist die Testbarkeit.
+
+Da unsere Application Services keine technischen Framework-Abhängigkeiten besitzen, können wir sie mit gewöhnlichen Unit-Tests überprüfen.
+
+Wir benötigen weder eine laufende Datenbank noch einen Spring Application Context.
+
+### Unit-Test für den Application Service
+
+```java
+@ExtendWith(MockitoExtension.class)
+class OrderServiceTest {
+
+    @Mock
+    private OrderRepository orderRepository;
+
+    @InjectMocks
+    private OrderService orderService;
+
+    @Test
+    void shouldCreateOrder() {
+
+        CreateOrderCommand command =
+            new CreateOrderCommand("Keyboard", 2);
+
+        when(orderRepository.save(any(Order.class)))
+            .thenAnswer(invocation ->
+                invocation.getArgument(0)
+            );
+
+        Order result = orderService.createOrder(command);
+
+        assertEquals("Keyboard", result.getProduct());
+        assertEquals(2, result.getQuantity());
+        assertEquals(OrderStatus.CREATED, result.getStatus());
+
+        verify(orderRepository).save(any(Order.class));
+    }
+}
+```
+
+Der Test verwendet Mockito, um das Repository zu simulieren.
+
+Dadurch können wir die Geschäftslogik isoliert testen.
+
+Zusätzlich sollten wir Integrationstests für den Persistence Adapter und HTTP-Tests für den REST Controller schreiben.
+
+Für PostgreSQL eignet sich beispielsweise Testcontainers, da damit Datenbanktests gegen eine echte PostgreSQL-Instanz ausgeführt werden können.
+
+Worauf es bei solchen Tests ankommt, wenn mehrere Transaktionen gleichzeitig dieselben Daten ändern, beschreibe ich im Artikel [Locks und Deadlocks mit @Transactional vermeiden](/blog/spring-boot-transactional-deadlocks-vermeiden#parallelitaet-realistisch-testen).
+
+Wichtig ist, nicht ausschließlich auf gemockte Unit-Tests zu setzen. Gerade das Mapping zwischen Domain und Datenbank sowie die tatsächliche Persistierung müssen separat überprüft werden.
+
+## Hexagonale Architektur vs. klassische Schichtenarchitektur
+
+Viele Spring-Boot-Projekte verwenden eine klassische Schichtenarchitektur.
+
+Dabei werden Komponenten typischerweise in Controller, Service und Repository aufgeteilt.
+
+Diese Struktur ist nicht grundsätzlich falsch.
+
+Sie kann für einfache CRUD-Anwendungen sogar die pragmatischere Lösung sein.
+
+Der Unterschied liegt vor allem darin, wie Abhängigkeiten definiert und fachliche Verantwortlichkeiten getrennt werden.
+
+| Kriterium | Schichtenarchitektur | Hexagonale Architektur |
+|---|---|---|
+| Organisation | Technische Schichten | Fachlicher Kern und Adapter |
+| Geschäftslogik | Häufig in Services | Domain und Application |
+| Datenbankzugriff | Häufig über Spring Data | Über Output Ports |
+| Framework-Abhängigkeit | Oft in mehreren Schichten | Vor allem außerhalb des Kerns |
+| Unit-Tests | Je nach Umsetzung isolierbar | Isolation wird gezielt unterstützt |
+| Implementierungsaufwand | Meist geringer | Meist höher |
+
+Ein wichtiger Punkt wird bei diesem Vergleich häufig übersehen.
+
+Auch eine klassische Schichtenarchitektur kann sauber implementiert werden.
+
+Die hexagonale Architektur garantiert also nicht automatisch besseren Code.
+
+Sie macht jedoch bestimmte Architekturentscheidungen explizit und erleichtert es, technische Abhängigkeiten vom Anwendungskern fernzuhalten.
+
+## Hexagonale Architektur, Clean Architecture und Onion Architecture
+
+Im Zusammenhang mit hexagonaler Architektur fallen häufig auch die Begriffe Clean Architecture und Onion Architecture.
+
+Alle drei Ansätze verfolgen ein ähnliches Ziel.
+
+Die Geschäftslogik soll unabhängig von technischen Details bleiben.
+
+Trotzdem gibt es Unterschiede.
+
+**Hexagonale Architektur** konzentriert sich auf die Kommunikation zwischen Anwendungskern und Außenwelt über Ports und Adapter.
+
+**Clean Architecture** nach Robert C. Martin beschreibt eine Architektur mit mehreren konzentrischen Schichten und einer klaren Dependency Rule.
+
+**Onion Architecture** nach Jeffrey Palermo organisiert die Anwendung ebenfalls in konzentrischen Schichten, wobei das Domain Model im Zentrum steht.
+
+In der Praxis überschneiden sich diese Ansätze stark.
+
+Für ein Spring-Boot-Projekt ist weniger entscheidend, welchen Begriff man verwendet, sondern ob die Architekturregeln tatsächlich eingehalten werden.
+
+## Häufige Fehler bei der hexagonalen Architektur
+
+Obwohl das Konzept relativ einfach erscheint, entstehen bei der Umsetzung häufig Probleme.
+
+### 1. Spring Data Repositories direkt im Application Service verwenden
+
+Ein häufiger Fehler besteht darin, ein `JpaRepository` direkt in den Application Service zu injizieren.
+
+Damit wird der Anwendungskern von Spring Data abhängig.
+
+Besser ist ein eigener Output Port, dessen Implementierung im Persistence Adapter liegt.
+
+### 2. JPA Entities als Domain Model verwenden
+
+Technisch funktioniert es, Domain-Objekte direkt mit `@Entity` zu annotieren.
+
+Allerdings vermischt man dadurch fachliche Modelle mit Persistenzanforderungen.
+
+Besonders bei komplexeren Geschäftsmodellen können dadurch unerwünschte Abhängigkeiten entstehen.
+
+Separate Modelle ermöglichen eine klarere Trennung, verursachen aber zusätzlichen Mapping-Aufwand. Ob sich dieser Aufwand lohnt, hängt von der Komplexität der Anwendung ab.
+
+### 3. Zu viele Interfaces erstellen
+
+Nicht jede Java-Klasse benötigt automatisch ein Interface.
+
+Eine hexagonale Architektur bedeutet nicht, dass jede Methode hinter mehreren Abstraktionsschichten verschwinden muss.
+
+Ports sollten dort eingesetzt werden, wo sie fachliche Anwendungsfälle oder relevante technische Abhängigkeiten beschreiben.
+
+Zusätzliche Abstraktionen ohne konkreten Nutzen machen den Code lediglich komplizierter.
+
+### 4. Geschäftslogik in Adapter verschieben
+
+REST Controller und Persistence Adapter sollten möglichst wenig fachliche Logik enthalten.
+
+Ihre Aufgabe besteht darin, Daten entgegenzunehmen, zu transformieren und an die entsprechenden Ports weiterzuleiten.
+
+Validierungen, die grundlegende Geschäftsregeln betreffen, gehören dagegen in den Anwendungskern.
+
+### 5. Architekturregeln nicht überprüfen
+
+Eine saubere Paketstruktur allein verhindert keine unerwünschten Abhängigkeiten.
+
+Java erlaubt beispielsweise, dass ein Application Service versehentlich Klassen aus einem Adapter-Paket importiert, sofern diese auf dem Classpath verfügbar sind.
+
+Mit Tools wie ArchUnit können solche Abhängigkeiten automatisiert überprüft werden.
+
+Das ist besonders in größeren Teams sinnvoll, in denen mehrere Entwickler gleichzeitig an unterschiedlichen Komponenten arbeiten.
+
+## Wann lohnt sich die hexagonale Architektur?
+
+Die hexagonale Architektur ist nicht für jedes Projekt automatisch die beste Wahl.
+
+Besonders sinnvoll ist sie bei Anwendungen, die über einen längeren Zeitraum weiterentwickelt werden und komplexe Geschäftsprozesse enthalten.
+
+Typische Einsatzbereiche sind:
+
+- Unternehmensanwendungen mit umfangreicher Geschäftslogik
+- Microservices mit mehreren externen Schnittstellen
+- Anwendungen mit langfristigen Wartungsanforderungen
+- Systeme mit komplexen Integrationen
+- Backend-Anwendungen, bei denen automatisierte Tests eine zentrale Rolle spielen
+
+Weniger sinnvoll kann sie bei sehr kleinen CRUD-Anwendungen oder kurzfristigen Prototypen sein.
+
+Wenn eine Anwendung lediglich Datensätze entgegennimmt und nahezu unverändert in einer Datenbank speichert, kann eine vollständige Ports-and-Adapters-Struktur unnötigen Aufwand verursachen.
+
+Entscheidend ist daher nicht die Größe des Projekts allein, sondern vor allem die fachliche Komplexität und die erwartete Weiterentwicklung.
+
+## Best Practices für hexagonale Architektur mit Spring Boot
+
+Aus meiner Sicht sind vor allem fünf Prinzipien entscheidend.
+
+**1. Starte mit der Domain.** Überlege zuerst, welche Geschäftsregeln deine Anwendung umsetzen muss. Datenbanktabellen und REST-Endpunkte sollten nicht automatisch das Domain Model bestimmen.
+
+**2. Definiere Ports anhand fachlicher Anforderungen.** Ein Input Port sollte einen konkreten Anwendungsfall beschreiben. Ein Output Port sollte eine benötigte Fähigkeit abstrahieren.
+
+**3. Halte Frameworks außerhalb des Anwendungskerns.** Spring Boot bietet viele nützliche Funktionen. Diese sollten aber nicht unnötig mit der Geschäftslogik vermischt werden.
+
+**4. Teste auf unterschiedlichen Ebenen.** Unit-Tests für die Domain, Integrationstests für Adapter und ausgewählte End-to-End-Tests ergänzen sich.
+
+**5. Vermeide Overengineering.** Eine gute Architektur reduziert Komplexität. Wenn zusätzliche Abstraktionen mehr Probleme verursachen als lösen, sollte die Struktur hinterfragt werden.
+
+## Fazit: Ist die hexagonale Architektur mit Java sinnvoll?
+
+Die hexagonale Architektur ist ein leistungsfähiger Ansatz, um langfristig wartbare und testbare Backend-Anwendungen zu entwickeln.
+
+Ihr größter Vorteil liegt nicht darin, dass sich Datenbanken oder Frameworks jederzeit problemlos austauschen lassen. Solche grundlegenden Technologieänderungen kommen in der Praxis vergleichsweise selten vor.
+
+Der eigentliche Mehrwert besteht darin, **Geschäftslogik und technische Infrastruktur konsequent voneinander zu trennen**.
+
+Dadurch werden fachliche Anforderungen verständlicher, Tests einfacher und technische Änderungen besser kontrollierbar.
+
+Gerade bei komplexeren Spring-Boot-Anwendungen kann diese Trennung langfristig einen erheblichen Unterschied machen.
+
+Allerdings sollte man die hexagonale Architektur nicht dogmatisch einsetzen.
+
+Für einfache Anwendungen reicht häufig eine gut strukturierte Schichtenarchitektur aus.
+
+Sobald Geschäftsprozesse komplexer werden, mehrere Integrationen hinzukommen oder sich technische Anforderungen regelmäßig verändern, lohnt es sich jedoch, Ports und Adapter bewusst einzusetzen.
+
+Am Ende entscheidet nicht die Anzahl der Interfaces oder Pakete über die Qualität einer Architektur, sondern wie gut sie zukünftige Änderungen unterstützt.
+
+## Häufig gestellte Fragen zur hexagonalen Architektur
+
+### Was ist hexagonale Architektur in Java?
+
+Die hexagonale Architektur ist ein Softwarearchitekturansatz, bei dem die Geschäftslogik vom technischen Umfeld getrennt wird. Über sogenannte Ports und Adapter kommuniziert die Anwendung mit Datenbanken, REST APIs und externen Systemen. Dadurch bleibt der Anwendungskern weitgehend unabhängig von Frameworks und Infrastruktur.
+
+### Was sind Ports und Adapter in Spring Boot?
+
+Ports sind Schnittstellen, die Anwendungsfälle oder benötigte externe Funktionen definieren. Adapter implementieren die technische Kommunikation. Ein REST Controller ist beispielsweise ein eingehender Adapter, während eine Spring-Data-JPA-Implementierung als ausgehender Adapter dienen kann.
+
+### Was ist der Unterschied zwischen Clean Architecture und hexagonaler Architektur?
+
+Beide Ansätze verfolgen das Ziel, die Geschäftslogik von technischen Abhängigkeiten zu isolieren. Die hexagonale Architektur konzentriert sich besonders auf Ports und Adapter. Clean Architecture beschreibt zusätzlich eine detailliertere Aufteilung in Architekturschichten und deren Abhängigkeitsregeln.
+
+### Ist die hexagonale Architektur für Microservices geeignet?
+
+Ja. Besonders Microservices mit komplexer Geschäftslogik oder mehreren externen Integrationen können davon profitieren. Die Architektur erleichtert es, fachliche Funktionen unabhängig von Transportprotokollen und Persistenztechnologien zu entwickeln und zu testen.
+
+### Benötige ich für hexagonale Architektur immer mehrere Maven-Module?
+
+Nein. Die Architektur lässt sich auch innerhalb eines einzelnen Maven-Moduls über Java-Pakete umsetzen. Separate Maven-Module können allerdings helfen, Architekturgrenzen technisch durchzusetzen.
+
+### Welche Nachteile hat die hexagonale Architektur?
+
+Der größte Nachteil ist der zusätzliche Implementierungsaufwand. Ports, Adapter, Mapping-Klassen und separate Modelle erhöhen zunächst die Anzahl der Komponenten. Bei einfachen CRUD-Anwendungen kann dieser Aufwand größer sein als der tatsächliche Nutzen.
+
+## Weiterführende Ressourcen
+
+- [HappyCoders: Hexagonale Architektur in Java implementieren](https://www.happycoders.eu/de/software-craftsmanship/hexagonale-architektur-java/)
+- [Alistair Cockburn: Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture)
+- [ArchUnit](https://www.archunit.org/)
+- [Spring Boot Dokumentation](https://docs.spring.io/spring-boot/)
