@@ -26,7 +26,7 @@ export const SERVICES = [
     summary:
       "LLMs direkt in deiner Java-Anwendung, dort, wo deine Fachlogik schon lebt.",
     label: "Integrieren",
-    title: "KI in deine Java-Anwendung",
+    title: "LLM-Integration in Java",
     teaser:
       "Deine Anwendung läuft, und jetzt soll sie Dokumente verstehen, Anfragen einordnen oder Fragen zu internem Wissen beantworten. Ich integriere LLMs dort, wo deine Fachlogik schon lebt, statt eine Python-Parallelwelt danebenzustellen.",
     points: [
