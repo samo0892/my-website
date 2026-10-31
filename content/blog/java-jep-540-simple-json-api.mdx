@@ -1,0 +1,459 @@
+---
+title: "JEP 540: JSON mit Java verarbeiten – ohne zusätzliche Bibliothek"
+metaTitle: "JEP 540: Java Simple JSON API mit Praxisbeispiel"
+description: "JSON direkt mit Java verarbeiten: Lerne die Simple JSON API aus JEP 540 kennen – mit Codebeispielen, Fehlerbehandlung und Einsatzgrenzen."
+shortAnswer: "JEP 540 bringt mit dem Modul jdk.incubator.json eine kompakte JSON-API ins JDK. Json.parse(...) liefert einen unveränderlichen Baum aus JsonValue-Objekten, durch den du mit get(...) navigierst; Methoden wie asString() oder asInt() wandeln die Werte explizit in Java-Typen um. Fehlende Felder und JSON-null behandelst du mit tryGet(...) und tryValue(). Die API ist ein Incubator-Feature für JDK 28 und passt vor allem zu kleinen Werkzeugen und überschaubaren Dokumenten; bei vielen DTOs wächst der manuelle Mapping-Code."
+date: "2026-10-31"
+ogImage: "/images/og/java-jep-540-simple-json-api.png"
+tags: ["Java", "JSON", "JDK"]
+keywords:
+  - "Java JSON API"
+  - "JEP 540"
+  - "Simple JSON API"
+  - "Java JSON ohne Jackson"
+  - "JSON parsen Java"
+  - "JDK 28 JSON"
+  - "jdk.incubator.json"
+service: "mvp-entwicklung"
+serviceText: "Dein Java-Backend soll auf eine neue JDK-Version, und du fragst dich, welche neuen Features sich für euch lohnen? Ich prüfe mit dir Abhängigkeiten und Architektur und setze die Migration um, abgesichert durch Tests, sodass dein Team danach selbst weiterarbeiten kann."
+---
+
+Eine Konfigurationsdatei einlesen, einige Felder aus einer API-Antwort auswerten oder einen kleinen JSON-Payload erzeugen: Solche Aufgaben gehören zum Alltag vieler Java-Entwickler.
+
+Mit **JEP 540: Simple JSON API (Incubator)** bekommt das JDK dafür eine eigene, kompakte API. Sie stellt JSON-Werte als Baum dar, durch den du navigieren und aus dem du Java-Werte auslesen kannst. Die API liegt im Modul `jdk.incubator.json`. [[1]][q1][[2]][q2]
+
+Damit stellt sich eine praktische Frage: Wann reicht die neue Java JSON API aus, und wann solltest du weiterhin eine umfangreichere Bibliothek einsetzen?
+
+In diesem Artikel entwickelst du ein kleines Beispiel, das Bestellungen aus einem JSON-Dokument auswertet und daraus einen neuen JSON-Report erzeugt. Dabei schauen wir uns auch optionale Felder, Geldbeträge und typische Fehler an.
+
+> **Stand: 31. Oktober 2026.** Die hier verwendete OpenJDK-API-Dokumentation gehört zu einem JDK-28-Entwicklungsstand. Die API ist ein Incubator-Feature und noch keine dauerhaft stabile API. Für Experimente brauchst du einen passenden JDK-28-Early-Access-Build, der das Modul enthält. Signaturen und Verhalten können sich ändern. [[3]][q3]
+
+## Was ist die Simple JSON API?
+
+Die Simple JSON API folgt einem direkten Ablauf:
+
+1. JSON-Text parsen.
+2. Zum gewünschten Wert navigieren.
+3. Den Wert in einen Java-Typ umwandeln.
+
+Der zentrale Einstiegspunkt ist `Json.parse(...)`:
+
+```java
+JsonValue customer = Json.parse("""
+    {
+      "name": "Anna",
+      "active": true
+    }
+    """);
+
+String name = customer.get("name").asString();
+boolean active = customer.get("active").asBoolean();
+```
+
+Das Ergebnis ist ein `JsonValue`. Die API unterscheidet die sechs JSON-Typen:
+
+| JSON-Typ | Java-Interface |
+|---|---|
+| Objekt | `JsonObject` |
+| Array | `JsonArray` |
+| Zeichenkette | `JsonString` |
+| Zahl | `JsonNumber` |
+| Wahrheitswert | `JsonBoolean` |
+| `null` | `JsonNull` |
+
+Die Werte sind unveränderlich und threadsicher. Das erleichtert beispielsweise die Weitergabe eines eingelesenen Dokuments zwischen mehreren Komponenten. [[4]][q4]
+
+## Die Java JSON API aktivieren
+
+Für unser Beispiel verwenden wir ein klassisches Java-Programm ohne Maven oder Gradle.
+
+Prüfe zunächst, ob dein JDK das Modul bereitstellt:
+
+```bash
+java --describe-module jdk.incubator.json
+```
+
+Beim Kompilieren und Ausführen unseres Programms nehmen wir es mit `--add-modules` in den Modulgraphen auf:
+
+```bash
+javac --add-modules jdk.incubator.json OrderReport.java
+java --add-modules jdk.incubator.json OrderReport
+```
+
+`--add-modules` steht sowohl für `javac` als auch für `java` zur Verfügung. [[5]][q5]
+
+## Praxisbeispiel: Bestellungen aus JSON auswerten
+
+Unsere Ausgangsdaten enthalten einen Kunden und drei Bestellungen:
+
+```json
+{
+  "customer": {
+    "id": 42,
+    "name": "Anna",
+    "email": null
+  },
+  "orders": [
+    {
+      "id": "ORD-1001",
+      "status": "PAID",
+      "total": 149.90
+    },
+    {
+      "id": "ORD-1002",
+      "status": "OPEN",
+      "total": 79.00
+    },
+    {
+      "id": "ORD-1003",
+      "status": "PAID",
+      "total": 24.50
+    }
+  ]
+}
+```
+
+Wir möchten daraus einen Report erzeugen, der den Kundennamen, die Anzahl bezahlter Bestellungen und deren Gesamtbetrag enthält.
+
+### JSON parsen und Felder auslesen
+
+`Json.parse(...)` akzeptiert im dokumentierten Entwicklungsstand einen `String` oder ein `char[]`. Für eine kleine Datei kannst du deshalb zunächst `Files.readString(...)` verwenden und den Inhalt anschließend parsen. [[6]][q6]
+
+Bei einem bekannten Dokumentaufbau lassen sich Zugriffe verketten:
+
+```java
+JsonValue root = Json.parse(jsonText);
+
+String customerName = root
+        .get("customer")
+        .get("name")
+        .asString();
+
+String firstOrderId = root
+        .get("orders")
+        .get(0)
+        .get("id")
+        .asString();
+```
+
+Die Methode `get(String)` greift auf Objektfelder zu. `get(int)` adressiert ein Array-Element.
+
+Die Konvertierung bleibt explizit: `asString()` verlangt einen JSON-String. Eine JSON-Zahl wird dadurch nicht automatisch in Text umgewandelt. Bei einem unpassenden Typ entsteht eine `JsonValueException`. [[4]][q4]
+
+### Fehlende Felder und JSON-null behandeln
+
+Bei optionalen Angaben lohnt sich eine genaue Unterscheidung:
+
+```json
+{}
+```
+
+Hier fehlt das Feld `email`.
+
+```json
+{"email": null}
+```
+
+Hier existiert es und enthält ausdrücklich JSON-`null`.
+
+Die API bietet dafür zwei Methoden:
+
+- `tryGet("email")` behandelt ein fehlendes Feld.
+- `tryValue()` behandelt einen vorhandenen JSON-`null`-Wert.
+
+Beides lässt sich kombinieren:
+
+```java
+String email = root.get("customer")
+        .tryGet("email")
+        .flatMap(JsonValue::tryValue)
+        .map(JsonValue::asString)
+        .orElse("Keine E-Mail hinterlegt");
+```
+
+Der Ersatzwert greift, wenn die E-Mail fehlt oder `null` ist. Ein vorhandener Wert mit falschem Typ bleibt dagegen ein Fehler. Diese Unterscheidung hilft, fehlerhafte Eingangsdaten sichtbar zu halten. [[2]][q2]
+
+### Geldbeträge ohne double verarbeiten
+
+Für unseren Report verwenden wir `BigDecimal`.
+
+Die JSON-Zahl sollte dafür direkt über ihre Textdarstellung übernommen werden:
+
+```java
+JsonValue totalValue = order.get("total");
+
+if (!(totalValue instanceof JsonNumber number)) {
+    throw new IllegalArgumentException(
+            "Das Feld 'total' muss eine JSON-Zahl sein"
+    );
+}
+
+BigDecimal total = new BigDecimal(number.toString());
+```
+
+Der Umweg über `asDouble()` wäre hier ungünstig: Bei der Konvertierung in einen binären Gleitkommatyp kann Präzision verloren gehen. Die OpenJDK-Dokumentation beschreibt die Konstruktion eines `BigDecimal` aus der Zahlendarstellung ausdrücklich als Alternative. [[7]][q7]
+
+Für eine echte Bestellverarbeitung müsstest du zusätzlich Währung, zulässige Nachkommastellen und Rundungsregeln festlegen. Unser Beispiel setzt voraus, dass alle Beträge dieselbe Währung verwenden.
+
+## Das vollständige Java-Beispiel
+
+Die folgende Klasse verbindet das Einlesen, Filtern, Summieren und Erzeugen des Reports.
+
+Die Beispiele orientieren sich an der verlinkten API-Dokumentation; sie wurden hier nicht mit einem JDK-28-Build ausgeführt.
+
+Speichere den Code als `OrderReport.java`:
+
+```java
+import java.math.BigDecimal;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import jdk.incubator.json.Json;
+import jdk.incubator.json.JsonNumber;
+import jdk.incubator.json.JsonObject;
+import jdk.incubator.json.JsonString;
+import jdk.incubator.json.JsonValue;
+
+public class OrderReport {
+
+    public static void main(String[] args) {
+        String jsonText = """
+            {
+              "customer": {
+                "id": 42,
+                "name": "Anna",
+                "email": null
+              },
+              "orders": [
+                {
+                  "id": "ORD-1001",
+                  "status": "PAID",
+                  "total": 149.90
+                },
+                {
+                  "id": "ORD-1002",
+                  "status": "OPEN",
+                  "total": 79.00
+                },
+                {
+                  "id": "ORD-1003",
+                  "status": "PAID",
+                  "total": 24.50
+                }
+              ]
+            }
+            """;
+
+        JsonValue root = Json.parse(jsonText);
+        JsonValue customer = root.get("customer");
+
+        String customerName = customer.get("name").asString();
+
+        String email = customer.tryGet("email")
+                .flatMap(JsonValue::tryValue)
+                .map(JsonValue::asString)
+                .orElse("Keine E-Mail hinterlegt");
+
+        int paidOrderCount = 0;
+        BigDecimal paidTotal = BigDecimal.ZERO;
+
+        for (JsonValue order : root.get("orders").asList()) {
+            String status = order.get("status").asString();
+
+            if (!"PAID".equals(status)) {
+                continue;
+            }
+
+            JsonValue totalValue = order.get("total");
+
+            if (!(totalValue instanceof JsonNumber number)) {
+                throw new IllegalArgumentException(
+                        "Das Feld 'total' muss eine JSON-Zahl sein"
+                );
+            }
+
+            paidTotal = paidTotal.add(
+                    new BigDecimal(number.toString())
+            );
+
+            paidOrderCount++;
+        }
+
+        Map<String, JsonValue> fields = new LinkedHashMap<>();
+        fields.put("customer", JsonString.of(customerName));
+        fields.put("email", JsonString.of(email));
+        fields.put("paidOrderCount", JsonNumber.of(paidOrderCount));
+        fields.put(
+                "paidTotal",
+                JsonNumber.of(paidTotal.toPlainString())
+        );
+
+        JsonObject report = JsonObject.of(fields);
+
+        System.out.println(Json.toDisplayString(report, "  "));
+    }
+}
+```
+
+Die erwarteten Ergebniswerte sind:
+
+```json
+{
+  "customer": "Anna",
+  "email": "Keine E-Mail hinterlegt",
+  "paidOrderCount": 2,
+  "paidTotal": 174.40
+}
+```
+
+Für den Aufbau des Ergebnisobjekts verwenden wir `JsonObject.of(Map)`. Zeichenketten und Zahlen werden zuvor mit den jeweiligen Factory-Methoden in JSON-Werte überführt. [[7]][q7][[8]][q8]
+
+Zur Ausgabe stehen zwei Varianten bereit:
+
+```java
+String compactJson = report.toString();
+
+String formattedJson = Json.toDisplayString(report, "  ");
+```
+
+`toString()` erzeugt kompakten JSON-Text. `toDisplayString(...)` ergänzt eine lesbare Formatierung mit der angegebenen Einrückung. [[6]][q6]
+
+## Typische Fehler beim JSON-Parsen mit Java
+
+Für eine robuste Integration solltest du Syntaxfehler, Strukturfehler und fachlich ungültige Werte getrennt betrachten.
+
+### Ungültige Syntax und doppelte Schlüssel
+
+Ein Dokument kann bereits beim Parsen scheitern:
+
+```java
+Json.parse("""
+    {"status": "OPEN", "status": "PAID"}
+    """);
+```
+
+Die Simple JSON API lehnt doppelte Feldnamen ab und wirft eine `JsonParseException`. Auch ungültige JSON-Syntax führt zu dieser Exception. [[6]][q6]
+
+Das ist besonders bei Schnittstellen relevant: Wenn ein Absender doppelte Schlüssel liefert, sollte eindeutig geklärt werden, welche Daten eigentlich gemeint sind.
+
+### Zahlen außerhalb des Zielbereichs
+
+Eine syntaktisch gültige JSON-Zahl passt nicht automatisch in einen Java-`int`:
+
+```java
+Json.parse("2147483648").asInt();
+```
+
+Auch eine Zahl mit einem nicht ganzzahligen Wert lässt sich nicht als `int` auslesen:
+
+```java
+Json.parse("19.95").asInt();
+```
+
+`asInt()` und `asLong()` verlangen eine exakte Darstellung im jeweiligen Zieltyp. Sie schneiden Nachkommastellen nicht einfach ab. [[7]][q7]
+
+### Fachliche Fehler nach erfolgreichem Parsen
+
+Dieses Dokument kann syntaktisch korrekt sein:
+
+```json
+{
+  "status": "PAID",
+  "total": -149.90
+}
+```
+
+Ob ein negativer Bestellbetrag zulässig ist, entscheidet deine Anwendung.
+
+Ein erfolgreicher Parser-Aufruf ersetzt deshalb keine fachliche Validierung. Für unseren Report wären beispielsweise erlaubte Statuswerte, Währungen und Betragsgrenzen zu prüfen.
+
+## Wann lohnt sich die Simple JSON API?
+
+Aus dem gezeigten Beispiel ergibt sich ein klarer Einsatzbereich: Du hast ein überschaubares JSON-Dokument und möchtest gezielt einzelne Werte lesen oder einen kleinen Ergebnisbaum aufbauen.
+
+Meine Einschätzung für typische Java-Projekte:
+
+| Aufgabe | Einordnung |
+|---|---|
+| Kleine Konfigurationsdatei auswerten | Gut geeigneter Einstieg |
+| In einem Kommandozeilenwerkzeug einige JSON-Felder lesen | Sinnvoller Einsatz |
+| Einen kleinen JSON-Report erzeugen | Mit explizitem Aufbau gut nachvollziehbar |
+| Viele unterschiedliche DTOs verarbeiten | Aufwand für manuelles Mapping abwägen |
+| Bereits etablierte JSON-Verarbeitung erweitern | Bestehenden Ansatz und Zusatznutzen prüfen |
+| Sehr große Dokumente verarbeiten | Speicherbedarf und passende Verarbeitungsstrategie prüfen |
+
+Gerade in kleinen Hilfsprogrammen ist der direkte Zugriff attraktiv. Bei umfangreichen Datenmodellen wächst dagegen die Menge des selbst geschriebenen Mapping-Codes.
+
+## Was bedeutet JEP 540 für Spring Boot und Quarkus?
+
+Für ein bestehendes Backend ist vor allem die Architekturentscheidung interessant.
+
+Ein neuer JSON-Baustein im JDK bedeutet nicht automatisch, dass du deine bisherige Verarbeitung umstellen solltest. Prüfe zuerst, welche Aufgaben deine vorhandene Lösung übernimmt: Objekt-Mapping, spezielle Datentypen, Validierung und Framework-Integration können für dein Projekt wichtiger sein als die Verarbeitung einzelner JSON-Felder.
+
+Ich würde die API zunächst in einem klar begrenzten Werkzeug ausprobieren, etwa einem kleinen Java-Programm zur Auswertung von Testdaten. Dadurch lässt sich beurteilen, wie gut Navigation, Fehlerbehandlung und explizite Konvertierungen zum eigenen Arbeitsstil passen.
+
+Bei einer Anwendung mit langfristig unterstützten Schnittstellen gehört außerdem die noch laufende Inkubation in die technische Entscheidung. Wenn die JSON-Verarbeitung in Adaptern gekapselt ist, wie ich es im Artikel [Hexagonale Architektur mit Java und Spring Boot](/blog/hexagonale-architektur-java-spring-boot) beschreibe, bleibt ein späterer Wechsel auf diese Klassen begrenzt.
+
+## Häufige Fragen zur Java JSON API
+
+### In welcher Java-Version ist JEP 540 relevant?
+
+Die hier gezeigte API ist für JDK 28 dokumentiert. Der verwendete Dokumentationsstand ist ein Entwicklungsstand und ausdrücklich noch nicht final. [[3]][q3]
+
+### Wie kann ich JSON ohne zusätzliche Bibliothek parsen?
+
+Mit einem passenden JDK-Build und aktiviertem Modul:
+
+```java
+JsonValue json = Json.parse("""
+    {"name": "Anna"}
+    """);
+
+String name = json.get("name").asString();
+```
+
+### Wie behandle ich optionale JSON-Felder?
+
+Verwende `tryGet(...)` für fehlende Objektfelder. Wenn auch JSON-`null` als fehlender Wert gelten soll, ergänze `flatMap(JsonValue::tryValue)`.
+
+### Wie erzeuge ich formatiertes JSON?
+
+Mit:
+
+```java
+Json.toDisplayString(jsonValue, "  ");
+```
+
+Der zweite Parameter legt die Einrückung fest.
+
+### Kann ich JSON-Zahlen exakt als BigDecimal auslesen?
+
+Prüfe zunächst, ob ein `JsonNumber` vorliegt, und übergib dessen Textdarstellung an den `BigDecimal`-Konstruktor. So vermeidest du eine vorherige Konvertierung in `double`.
+
+## Fazit: Eine interessante Ergänzung für kleine Java-Werkzeuge
+
+JEP 540 macht alltägliche JSON-Aufgaben direkt mit einer JDK-API zugänglich. Das Bestellbeispiel zeigt den Ablauf: Dokument parsen, Werte auslesen, fachlich auswerten und ein neues JSON-Objekt erzeugen.
+
+Besonders interessant finde ich diesen Ansatz für kleine Werkzeuge und gezielte Auswertungen. Dort bleibt der Code überschaubar, und die expliziten Zugriffe machen sichtbar, welche Struktur das Programm erwartet.
+
+Für Java-Backend-Entwickler lohnt es sich deshalb, die Simple JSON API praktisch auszuprobieren und ihre weitere Entwicklung zu verfolgen.
+
+## Quellen und weiterführende Links
+
+1. [JEP 540: Simple JSON API (Incubator)][q1]
+2. [OpenJDK: Paketdokumentation der JSON-API][q2]
+3. [OpenJDK: Modul jdk.incubator.json][q3]
+4. [OpenJDK: JsonValue][q4]
+5. [Dev.java: Extending the Module Graph with --add-modules and --add-reads][q5]
+6. [OpenJDK: Json][q6]
+7. [OpenJDK: JsonNumber und numerische Konvertierungen][q7]
+8. [OpenJDK: JsonObject][q8]
+
+[q1]: https://openjdk.org/jeps/540 "JEP 540: Simple JSON API (Incubator)"
+[q2]: https://cr.openjdk.org/~naoto/json/javadoc/api/jdk.incubator.json/jdk/incubator/json/package-summary.html "OpenJDK: Paketdokumentation der JSON-API"
+[q3]: https://cr.openjdk.org/~naoto/json/javadoc/api/jdk.incubator.json/module-summary.html "OpenJDK: Modul jdk.incubator.json"
+[q4]: https://cr.openjdk.org/~naoto/json/javadoc/api/jdk.incubator.json/jdk/incubator/json/JsonValue.html "OpenJDK: JsonValue"
+[q5]: https://dev.java/learn/modules/add-modules-reads/ "Dev.java: Extending the Module Graph with --add-modules and --add-reads"
+[q6]: https://cr.openjdk.org/~naoto/json/javadoc/api/jdk.incubator.json/jdk/incubator/json/Json.html "OpenJDK: Json"
+[q7]: https://cr.openjdk.org/~naoto/json/javadoc/api/jdk.incubator.json/jdk/incubator/json/JsonNumber.html "OpenJDK: JsonNumber und numerische Konvertierungen"
+[q8]: https://cr.openjdk.org/~naoto/json/javadoc/api/jdk.incubator.json/jdk/incubator/json/JsonObject.html "OpenJDK: JsonObject"
