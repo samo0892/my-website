@@ -1,0 +1,152 @@
+---
+title: "Spring Boot vs. Quarkus: Welches Java-Framework passt zu deinem Projekt?"
+metaTitle: "Spring Boot vs. Quarkus: Java-Frameworks im Vergleich"
+description: "Spring Boot vs. Quarkus im Praxisvergleich: REST-Code, Startzeit, Speicher, GraalVM Native Image und Entscheidungshilfe für Java-Backend-Teams."
+shortAnswer: "Spring Boot ist oft die naheliegende Wahl, wenn dein Team bereits auf Spring setzt und etablierte Integrationen weiterverwenden kann. Quarkus lohnt sich besonders als Vergleichskandidat, wenn Startzeit oder Speicher pro Replikat messbar ins Gewicht fallen oder das Team mit Jakarta REST und CDI arbeiten möchte. Beide Frameworks können auf der JVM und als GraalVM Native Image laufen. Welche Variante sich im Betrieb rechnet, hängt vom Dienst und seiner Last ab."
+date: "2026-11-20"
+ogImage: "/images/og/spring-boot-vs-quarkus.png"
+tags: ["Java", "Spring Boot", "Quarkus", "GraalVM"]
+keywords:
+  - "Spring Boot vs Quarkus"
+  - "Spring Boot Quarkus Vergleich"
+  - "Java Microservices Framework"
+  - "Quarkus vs Spring Boot Performance"
+  - "GraalVM Native Image Java"
+  - "Spring Boot oder Quarkus"
+service: "mvp-entwicklung"
+serviceText: "Du stehst vor der Wahl zwischen Spring Boot und Quarkus oder willst einen bestehenden Dienst migrieren? Ich setze mit dir einen realistischen Vergleichsdienst in beiden Frameworks um, messe Startzeit, Speicher und Latenz unter euren Bedingungen und begleite die Umsetzung, abgesichert durch Tests."
+---
+
+Dein Spring-Boot-Service startet zuverlässig, das Team kennt die Werkzeuge und die Anwendung läuft ohnehin den ganzen Tag. Was würde Quarkus in diesem Fall verbessern? Bei einem neuen Dienst, der nach Leerlauf aus dem Stand hochfahren muss, sieht die Rechnung anders aus. Dort kann jede zusätzliche Sekunde bis zur ersten Antwort direkt beim Nutzer ankommen.
+
+## Spring Boot und Quarkus im direkten Vergleich
+
+| Kriterium | Spring Boot | Quarkus |
+| --- | --- | --- |
+| REST-API | Spring MVC mit `@RestController` oder Spring WebFlux | Quarkus REST mit Jakarta REST, etwa `@Path` und `@GET` |
+| Dependency Injection | Spring-Container, etwa mit `@Component` und Konstruktorinjektion | ArC mit CDI, etwa mit `@ApplicationScoped` |
+| Initialisierung | Im üblichen JVM-Modus überwiegend beim Start. Spring AOT kann Teile vorziehen. | Erweiterungen verlagern Teile der Verarbeitung in den Build, auch für JVM-Artefakte. |
+| Lokale Entwicklung | DevTools für automatische Neustarts bei Klassenpfadänderungen. Testcontainers-Integration über Service Connections. | Dev Mode mit Live Reload. Dev Services können passende Abhängigkeiten wie PostgreSQL automatisch starten. |
+| Tests | `@WebMvcTest` für den MVC-Ausschnitt und `@SpringBootTest` für den Anwendungskontext | `@QuarkusTest` für Tests mit gestarteter Anwendung und `@QuarkusIntegrationTest` für das gebaute Artefakt |
+| Deployment | Ausführbares JAR, Container-Image oder Native Image | JVM-Paket, Container-Image oder Native Image |
+
+[Spring Boot DevTools](https://docs.spring.io/spring-boot/reference/using/devtools.html) · [Spring Boot und Testcontainers](https://docs.spring.io/spring-boot/reference/testing/testcontainers.html) · [Quarkus Dev Services](https://quarkus.io/guides/dev-services/) · [Quarkus-Tests](https://quarkus.io/guides/getting-started-testing/)
+
+## Der gleiche REST-Endpunkt in Spring Boot und Quarkus
+
+Ein kleiner Produktdienst liefert unter `GET /products/42` ein JSON-Objekt. Beide Varianten verwenden denselben Java-Record. Lege ihn zusammen mit dem jeweiligen HTTP-Adapter im Paket deines Projekts ab.
+
+```java
+public record Product(long id, String name) {}
+```
+
+### Spring Boot mit Spring MVC
+
+Erstelle in Spring Initializr ein Maven-Projekt mit **Spring Web**. Der Controller gehört in das Paket der generierten Anwendungsklasse oder in ein Unterpaket, damit Spring ihn beim Component Scan findet.
+
+```java
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/products")
+public class ProductController {
+
+    @GetMapping("/{id}")
+    public Product get(@PathVariable("id") long id) {
+        return new Product(id, "Mechanische Tastatur");
+    }
+}
+```
+
+Starte das Projekt mit `./mvnw spring-boot:run`. Der Spring-MVC-Controller gibt den Record zurück, den der JSON-Konverter serialisiert. [Spring REST Guide](https://spring.io/guides/gs/rest-service/)
+
+### Quarkus mit Jakarta REST
+
+Erstelle auf code.quarkus.io ein Maven-Projekt mit der Erweiterung **REST Jackson** (`quarkus-rest-jackson`).
+
+```java
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+
+@Path("/products")
+@Produces(MediaType.APPLICATION_JSON)
+public class ProductResource {
+
+    @GET
+    @Path("/{id}")
+    public Product get(@PathParam("id") long id) {
+        return new Product(id, "Mechanische Tastatur");
+    }
+}
+```
+
+Starte das Projekt mit `./mvnw quarkus:dev`. Rufe jeweils eine Variante auf Port 8080 auf. [Quarkus REST mit JSON](https://quarkus.io/guides/rest-json/)
+
+```bash
+curl --fail http://localhost:8080/products/42
+```
+
+Erwartete Antwort:
+
+```json
+{"id":42,"name":"Mechanische Tastatur"}
+```
+
+Der Endpunkt behandelt jede ID als gefunden. In einem echten Produktdienst würde ich Abfrage, fachliche Regeln und den Fall „Produkt fehlt“ in einen Anwendungsservice auslagern. Der HTTP-Adapter übersetzt das Ergebnis dann in JSON oder HTTP 404. Bei einem Framework-Wechsel lässt sich diese Fachlogik weiterverwenden, sofern sie frei von Framework-Abhängigkeiten bleibt. Wie diese Trennung aussieht, zeige ich im Artikel zur [hexagonalen Architektur mit Java und Spring Boot](/blog/hexagonale-architektur-java-spring-boot).
+
+## Performance: Startzeit, Speicher und Durchsatz getrennt messen
+
+### Wann eine kürzere Startzeit zählt
+
+Quarkus verlagert Arbeit beim Aufbau der Anwendung in den Build. Spring Boot kann mit Spring AOT ebenfalls Initialisierung vorberechnen. Auf der JVM lässt sich Spring AOT gezielt aktivieren. Native Images sind bei beiden Frameworks eine weitere Option für kurze Startzeiten. [Spring AOT auf der JVM](https://docs.spring.io/spring-boot/reference/packaging/aot.html) · [Quarkus Native Builds](https://quarkus.io/guides/building-native-image/)
+
+Miss die Zeit **vom Containerstart bis zur ersten erfolgreichen fachlichen Anfrage**. Erfasse zusätzlich, wann die Readiness-Probe erfolgreich wird. Bei Scale-to-zero zählt aus Nutzersicht die gesamte Wartezeit ab Anfrage, einschließlich möglicher Verzögerungen durch Scheduling oder Image Pull. Wenn das Warten auf die Datenbank den Großteil der Zeit ausmacht, bringt ein schnellerer Framework-Start entsprechend weniger.
+
+### Was der Dienst im Dauerbetrieb verbraucht
+
+Ein schneller Start liefert noch keine Aussage über Durchsatz oder Antwortzeit unter Last. Vergleiche den Speicherbedarf des Prozesses anhand von RSS und erfasse zusätzlich den Speicherverbrauch des Containers, wenn du Kubernetes-Limits festlegen willst. Für die Nutzersicht zählen Durchsatz, Fehlerquote und mindestens die p95- und p99-Latenz nach dem Aufwärmen. [Quarkus-Leitfaden zur Performance-Messung](https://quarkus.io/guides/performance-measure/)
+
+Für einen fairen Test würde ich so vorgehen:
+
+1. **Dieselbe Funktion implementieren.** Verwende identische Daten, Payloads, Authentifizierung und Datenbankabfragen. Ein REST-Endpunkt mit konstantem JSON eignet sich als erster Probelauf.
+2. **Vergleichbare Bedingungen schaffen.** Halte CPU- und Speicherlimits, Lastprofil und Infrastruktur gleich. Dokumentiere JDK, Framework-Versionen und JVM-Flags.
+3. **JVM und Native separat vergleichen.** Stelle Spring Boot JVM und Quarkus JVM gegenüber. Falls Native für das Projekt infrage kommt, vergleiche zusätzlich beide Native Builds untereinander und jeweils mit der eigenen JVM-Variante.
+4. **Kaltstarts wiederholen.** Dokumentiere, ob die Images bereits auf dem Knoten liegen, und erfasse mehrere Starts. Miss danach den Dauerbetrieb bei repräsentativer Last und halte auch CI-Build-Zeit und Image-Größe fest.
+
+## GraalVM Native Image: Was sich für Build und Tests ändert
+
+Native Image erstellt für eine Zielplattform ein ausführbares Programm. Die Analyse bestimmt beim Build, welcher Code erreichbar ist. Dynamische Zugriffe über Reflection, Ressourcen oder Proxys können zusätzliche Reachability-Metadaten erfordern. Frameworks und Erweiterungen decken gängige Fälle ab. Prüfe vor allem eigene Bibliotheken und Integrationen, die zur Laufzeit dynamisch arbeiten. [Spring Boot Native Image](https://docs.spring.io/spring-boot/how-to/native-image/developing-your-first-application.html) · [Quarkus REST und Reflection](https://quarkus.io/guides/rest-json/)
+
+Wenn Native in Produktion laufen soll, teste in der CI das gebaute Artefakt mit den Integrationen, die du tatsächlich brauchst. Dazu gehören zum Beispiel JSON-Serialisierung, Datenbankzugriff, OIDC und ausgehende HTTP-Aufrufe. Unit-Tests für Fachlogik können weiter auf der JVM laufen. So bleibt der schnelle Testzyklus erhalten, während die Pipeline auch Fehler im Native Build sichtbar macht. [Native Tests in Spring Boot](https://docs.spring.io/spring-boot/how-to/native-image/testing-native-applications.html) · [Quarkus-Integrationstests](https://quarkus.io/guides/getting-started-testing/)
+
+## Wann würde ich Spring Boot oder Quarkus wählen?
+
+**Spring Boot für einen bestehenden Spring-Stack.** Wenn mehrere Dienste bereits Spring Security, Spring Data, gemeinsame Starter und dieselbe CI-Pipeline nutzen, hat ein weiteres Spring-Boot-Projekt einen Vorsprung. Das Team kann dieselben Integrationen, Testmuster und Betriebsabläufe weiterverwenden. Bei konkreten Startzeitproblemen lohnt ein Vergleich mit Spring AOT oder Native Image auf Basis des vorhandenen Dienstes.
+
+**Quarkus für einen neuen Dienst mit klaren Ressourcenbudgets.** Wenn viele Replikate mit engem Speicherlimit laufen oder Scale-to-zero Teil des Betriebsmodells ist, würde ich Quarkus früh mit einem realistischen Dienst testen. Für ein Team mit Jakarta-EE-Erfahrung sind Jakarta REST und CDI vertraute Einstiegspunkte. Prüfe die für den Dienst benötigten Erweiterungen und teste die geplante Betriebsform früh in der CI.
+
+**Bei einer Migration zuerst die Abhängigkeiten inventarisieren.** Ein Controller lässt sich oft zügig übertragen. Mehr Aufwand steckt typischerweise in Security-Regeln, Konfiguration, Spring-Data-Repositories oder organisationsspezifischen Startern. Quarkus bietet Kompatibilität für ausgewählte Spring-APIs. Die Spring-DI-Erweiterung verarbeitet unterstützte Annotationen im Quarkus-Modell. Prüfe anhand der Dokumentation, welche Funktionen deine Anwendung nutzt, und teste einen vollständigen fachlichen Ablauf mit Datenbank und Authentifizierung. [Quarkus-Kompatibilität für Spring DI](https://quarkus.io/guides/spring-di/)
+
+## Häufige Fragen zu Spring Boot und Quarkus
+
+### Ist Quarkus schneller als Spring Boot?
+
+Das hängt von der Messgröße und der Anwendung ab. Vergleiche Startzeit bis zur ersten nutzbaren Antwort, Speicher unter Last und Latenz bei gleichem Durchsatz. Ein Ergebnis für einen kleinen Demo-Dienst lässt sich nur eingeschränkt auf einen Service mit Datenbank, Authentifizierung und externen APIs übertragen.
+
+### Kann Spring Boot ein GraalVM Native Image erstellen?
+
+Ja. Spring Boot bereitet die Anwendung mit Spring AOT für die native Kompilierung vor. Die offizielle Dokumentation beschreibt Builds mit den GraalVM Native Build Tools sowie Container-Images über [Cloud Native Buildpacks](https://docs.spring.io/spring-boot/how-to/native-image/developing-your-first-application.html).
+
+### Brauche ich für Quarkus reaktive Programmierung?
+
+Nein. Ein einfacher REST-Endpunkt kann wie oben direkt ein Java-Objekt zurückgeben. Wenn du blockierende Zugriffe wie JDBC mit asynchronen Endpunkten kombinierst, beachte die Ausführungsregeln für Event Loop und Worker-Threads. [Quarkus REST und Ausführungsmodell](https://quarkus.io/guides/rest#execution-model-blocking-non-blocking)
+
+## Fazit
+
+Die Framework-Entscheidung lässt sich an einem konkreten Dienst festmachen. Wähle einen typischen Endpunkt mit Datenbankzugriff und Authentifizierung, definiere deine Zielwerte für Startzeit, Speicher und Latenz und setze den Endpunkt in beiden Kandidaten um. Erfasst du auch Build-Zeit, Integrationsaufwand und Auswirkungen auf den Betrieb, kannst du beurteilen, ob ein messbarer Vorteil den zusätzlichen Aufwand für dein Team rechtfertigt.
