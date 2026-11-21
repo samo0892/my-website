@@ -1,0 +1,626 @@
+---
+title: "MCP-Server mit Java und Spring Boot bauen: Tutorial mit Spring AI 2.1"
+metaTitle: "MCP-Server mit Java und Spring Boot: Spring-AI-Tutorial"
+description: "MCP-Server mit Java bauen: Tools, Resources und Prompts mit Spring AI 2.1, Streamable HTTP oder MCP 2026-07-28, OAuth-Absicherung und Tests."
+shortAnswer: "Mit Spring AI wird eine Spring-Boot-Anwendung über den Starter spring-ai-starter-mcp-server-webmvc zum MCP-Server. Tools, Resources und Prompts sind normale Methoden mit @McpTool, @McpResource und @McpPrompt. Wichtig: Setze spring.ai.mcp.server.protocol ausdrücklich, sonst startet der Server mit dem veralteten SSE-Transport. STREAMABLE ist heute die kompatible Wahl, MODERN spricht seit Spring AI 2.1 die neue, zustandslose MCP-Revision 2026-07-28. Für den Betrieb brauchst du zusätzlich OAuth, eine Origin-Prüfung und die Identität des Nutzers im Tool, nicht in den Tool-Argumenten."
+date: "2026-11-21"
+ogImage: "/images/og/mcp-server-java-spring-boot.png"
+tags: ["Java", "Spring AI", "MCP", "KI"]
+keywords:
+  - "MCP Server Java"
+  - "MCP Server Spring Boot"
+  - "Spring AI MCP Server"
+  - "Model Context Protocol Java"
+  - "MCP Server erstellen"
+  - "MCP 2026-07-28"
+  - "MCP Java SDK"
+service: "llm-integration-java"
+serviceText: "Du willst Daten oder Funktionen deiner Java-Anwendung als MCP-Server für Claude, Copilot oder eigene Agenten bereitstellen, mit sauberer Anmeldung und klaren Berechtigungen? Ich setze das mit dir um, vom Zuschnitt der Tools bis zum abgesicherten Betrieb."
+---
+
+Im Artikel über [AI Agents mit Java](/blog/ai-agents-mit-java-entwickeln) liegen die Tools in derselben Anwendung wie der Agent: Methoden mit `@Tool`, die nur dieser eine Agent aufrufen kann. Sobald ein zweiter Agent, Claude Code oder der Copilot deines Teams dieselben Funktionen nutzen soll, brauchst du eine gemeinsame Schnittstelle. Genau dafür gibt es das **Model Context Protocol**, kurz MCP.
+
+Ein MCP-Server stellt Werkzeuge, Daten und Prompt-Vorlagen so bereit, dass jeder MCP-fähige Client sie findet und aufrufen kann. In diesem Tutorial baust du einen solchen Server mit Java, Spring Boot und Spring AI: zuerst die Tools, dann Resources und Prompts, anschließend die Absicherung mit OAuth und ein Integrationstest mit dem MCP-Client des Java SDK.
+
+Der Zeitpunkt passt: Spring AI 2.1.0 ist am 20. November 2026 erschienen und unterstützt neben Streamable HTTP auch die neue, zustandslose MCP-Revision 2026-07-28. [[7]][q7] Welche der beiden Varianten du heute wählen solltest, klärt ein eigener Abschnitt.
+
+> **Stand: 21. November 2026.** Die Beispiele verwenden Spring AI 2.1.0, Spring Boot 4.2.0, das MCP Java SDK 2.2.0 und Java 25. Ich habe das Projekt kompiliert, den Server gestartet und per `curl` mit beiden Protokollen aufgerufen; acht Integrationstests prüfen Tools, Schema, Anmeldung und Origin-Prüfung. Gegen Claude Code oder andere Clients habe ich den Server nicht getestet. Die API für MCP 2026-07-28 kann sich laut Java SDK bis Version 3.0 noch in Minor-Releases ändern. [[5]][q5]
+
+## Was ist ein MCP-Server?
+
+MCP ist ein offenes Protokoll, über das KI-Anwendungen auf externe Werkzeuge und Daten zugreifen. Die Rollen sind klar verteilt:
+
+- **Host:** die KI-Anwendung, etwa Claude Code, eine IDE oder dein eigener Agent.
+- **Client:** die Verbindung, die der Host zu genau einem Server aufbaut.
+- **Server:** dein Dienst, der Fähigkeiten anbietet.
+
+Ein Server kann drei Arten von Fähigkeiten anbieten: [[2]][q2]
+
+| Baustein | Wer entscheidet über die Nutzung? | Beispiel |
+|---|---|---|
+| Tools | Das Modell ruft sie bei Bedarf auf | Bestellung nachschlagen |
+| Resources | Die Anwendung oder der Nutzer wählt sie als Kontext aus | Rückgaberichtlinie als Markdown |
+| Prompts | Der Nutzer wählt eine Vorlage aus | „Reklamation beantworten“ |
+
+Technisch spricht der Server JSON-RPC, lokal über die Standardein- und -ausgabe (STDIO) oder im Netzwerk über HTTP. Das Modell sieht von einem Tool nur Name, Beschreibung und Parameterschema, nie den Java-Code dahinter.
+
+### MCP oder einfaches Tool Calling?
+
+Nicht jede Funktion braucht einen MCP-Server. Nutzt nur eine einzige Anwendung ein Tool, reicht `@Tool` direkt im `ChatClient`, wie im [Agenten-Artikel](/blog/ai-agents-mit-java-entwickeln#tools-mit-spring-ai-definieren) gezeigt. Ein MCP-Server lohnt sich, wenn
+
+- mehrere Agenten oder Anwendungen dieselben Funktionen brauchen,
+- Entwicklerwerkzeuge wie Claude Code oder Copilot auf interne Systeme zugreifen sollen,
+- ein anderes Team die Tools betreibt als das Team, das den Agenten baut.
+
+Dann ist der MCP-Server für mich ein weiterer eingehender Adapter, ähnlich einem REST-Controller: Er ruft dieselben Application Services auf, nur spricht er ein anderes Protokoll. Wie diese Trennung aussieht, beschreibe ich im Artikel zur [hexagonalen Architektur](/blog/hexagonale-architektur-java-spring-boot#adapter-die-verbindung-zur-aussenwelt).
+
+## MCP 2025-11-25 und 2026-07-28: Was sich geändert hat
+
+Bis zum Sommer 2026 begann jede MCP-Verbindung mit einem Handshake: Der Client schickt `initialize`, der Server antwortet mit seinen Fähigkeiten und vergibt eine Session-ID, die bei jedem weiteren Request mitläuft. Das funktioniert, macht aber den Betrieb hinter einem Load Balancer mühsam, weil alle Requests einer Session beim selben Server landen müssen.
+
+Die Revision **2026-07-28** räumt damit auf: [[1]][q1]
+
+- `initialize` und der Header `Mcp-Session-Id` entfallen. Jeder Request trägt Protokollversion und Client-Fähigkeiten selbst in `_meta`.
+- HTTP-Requests tragen die Methode zusätzlich im Header `Mcp-Method` und, wenn sie sich auf ein bestimmtes Tool, eine Resource oder einen Prompt beziehen, dessen Namen im Header `Mcp-Name`.
+- Über das optionale `server/discover` fragt ein Client die Fähigkeiten des Servers ab.
+- Rückfragen vom Server an den Client, etwa nach einer Bestätigung durch den Nutzer, laufen jetzt über Multi-Round-Trip-Requests. Roots, Sampling und Logging sind als veraltet markiert, funktionieren laut Ankündigung aber noch mindestens zwölf Monate.
+
+Das MCP Java SDK unterstützt die neue Revision seit Version 2.2.0 in einem eigenen Paket `io.modelcontextprotocol.modern`, neben dem unveränderten bisherigen Server. [[5]][q5] Spring AI 2.1.0 baut darauf auf: Ein Property schaltet den Server auf die neue Revision um. [[7]][q7]
+
+Der Haken liegt bei den Clients. Ein Server, der nur 2026-07-28 spricht, lehnt den alten `initialize`-Handshake ab; das habe ich im Test so gesehen. Clients, die die neue Revision noch nicht beherrschen, können sich also nicht verbinden. Claude Code bringt laut Dokumentation eine zweite Laufzeit mit, die die Revision 2026-07-28 aushandelt, wenn ein Server sie unterstützt. Ob sie aktiv ist, hängt allerdings von Version und Einstellungen ab. [[13]][q13] Für MCP Inspector, Cursor und VS Code habe ich beim Schreiben keine Aussage zur neuen Revision gefunden.
+
+## Den Transport wählen
+
+Spring AI kennt für einen MCP-Server fünf Varianten. Über HTTP wählst du sie mit `spring.ai.mcp.server.protocol`: [[8]][q8]
+
+| Variante | Konfiguration | Wann ich sie nehme |
+|---|---|---|
+| STDIO | `spring.ai.mcp.server.stdio: true` | Lokaler Server, den der Client als Prozess startet |
+| SSE | ohne `protocol` | Gar nicht mehr, der Transport ist seit Spring AI 2.0 veraltet |
+| Streamable HTTP | `protocol: STREAMABLE` | Standard für Netzwerk-Server, versteht jeder aktuelle Client |
+| Stateless | `protocol: STATELESS` | Streamable HTTP ohne Session, für mehrere Instanzen ohne Sticky Sessions |
+| Modern | `protocol: MODERN` | MCP 2026-07-28, wenn deine Clients die Revision sprechen |
+
+Die wichtigste Zeile der Tabelle ist die zweite. **Ohne `protocol` startet ein WebMVC-Server mit dem veralteten SSE-Transport.** Die Dokumentation sagt das so, und im Test hat mein Server ohne das Property auf `/sse` geantwortet, während `/mcp` mit 404 endete. [[8]][q8] Setze das Property deshalb immer ausdrücklich.
+
+Meine Empfehlung für neue Server: **STREAMABLE**, solange du nicht weißt, welche Clients sich verbinden. Steuerst du die Clients selbst, etwa weil nur eigene Spring-AI-Agenten den Server nutzen, ist **MODERN** die bessere Wahl. Der Server hält dann keinen Zustand pro Verbindung, und jede Instanz kann jeden Request beantworten. Weil die Tools in beiden Fällen dieselben sind, ist der Wechsel später eine Zeile Konfiguration.
+
+## Das Projekt aufsetzen
+
+Als Beispiel dient ein Bestellsystem. Der MCP-Server soll Bestellungen nachschlagen, prüfen, ob eine Erstattung möglich ist, die Rückgaberichtlinie bereitstellen und eine Prompt-Vorlage für Reklamationen anbieten.
+
+In der `pom.xml` brauchst du die Spring-AI-BOM und den Starter für einen Server auf Basis von Spring MVC:
+
+```xml
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.2.0</version>
+    <relativePath/>
+</parent>
+
+<properties>
+    <java.version>25</java.version>
+    <spring-ai.version>2.1.0</spring-ai.version>
+</properties>
+
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-bom</artifactId>
+            <version>${spring-ai.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+    </dependency>
+</dependencies>
+```
+
+Für einen reaktiven Server gibt es `spring-ai-starter-mcp-server-webflux`, für einen reinen STDIO-Server `spring-ai-starter-mcp-server`. [[8]][q8] Ein Modell oder einen API-Key brauchst du nicht: Der MCP-Server ruft selbst kein Sprachmodell auf, das tut der Client.
+
+Die Konfiguration in `application.yaml`:
+
+```yaml
+spring:
+  ai:
+    mcp:
+      server:
+        name: bestellungen
+        version: 1.0.0
+        protocol: STREAMABLE
+        instructions: "Werkzeuge zum Nachschlagen von Bestellungen und Erstattungen"
+```
+
+`name` und `version` meldet der Server an den Client, `instructions` sind ein Hinweis für das Modell, wofür der Server da ist. Der Endpunkt liegt standardmäßig unter `/mcp`.
+
+## Tools mit @McpTool definieren
+
+Ein Tool ist eine Methode in einer Spring-Bean, annotiert mit `@McpTool`. Spring AI findet solche Methoden beim Start und registriert sie; im Log steht dann `Registered tools: 2`.
+
+```java
+@Component
+public class OrderTools {
+
+    private final OrderService orderService;
+
+    public OrderTools(OrderService orderService) {
+        this.orderService = orderService;
+    }
+
+    @McpTool(name = "find_order",
+            description = "Liefert Status, Lieferdatum und Betrag einer Bestellung",
+            generateOutputSchema = true,
+            annotations = @McpAnnotations(readOnlyHint = true, destructiveHint = false,
+                    idempotentHint = true, openWorldHint = false))
+    public OrderSummary findOrder(
+            @McpToolParam(description = "Bestellnummer, z. B. 4711") String orderId) {
+        return orderService.find(orderId);
+    }
+
+    @McpTool(name = "check_refund",
+            description = "Prüft, ob für eine Bestellung eine Erstattung möglich ist, und nennt den Grund",
+            annotations = @McpAnnotations(readOnlyHint = true, destructiveHint = false,
+                    idempotentHint = true, openWorldHint = false))
+    public RefundCheck checkRefund(
+            @McpToolParam(description = "Bestellnummer") String orderId) {
+        return orderService.checkRefund(orderId);
+    }
+}
+```
+
+Die Annotationen liegen im Paket `org.springframework.ai.mcp.annotation`, `McpAnnotations` ist eine innere Annotation von `McpTool`. Die Rückgabetypen sind einfache Records:
+
+```java
+public record OrderSummary(String orderId, String status, LocalDate deliveredOn, BigDecimal total) {
+}
+
+public record RefundCheck(boolean possible, String reason) {
+}
+```
+
+Spring AI erzeugt aus den Parametern ein JSON-Schema und serialisiert die Rückgabe als JSON. Vier Details entscheiden darüber, wie gut ein Modell mit dem Tool arbeitet.
+
+**Die Beschreibung ist die Schnittstelle.** Das Modell entscheidet allein anhand von Name, Beschreibung und Parameterbeschreibungen, ob und wie es ein Tool aufruft. Schreib sie so, als würdest du einem neuen Kollegen erklären, wofür das Tool da ist.
+
+**Setze alle Hinweise ausdrücklich.** Bei meinem ersten Durchlauf hatte ich nur `readOnlyHint = true` gesetzt. Im `tools/list` stand trotzdem `destructiveHint: true` und `openWorldHint: true`, weil das die Vorgaben sind. Clients können diese Hinweise etwa nutzen, um vor einem Aufruf nachzufragen. Eine Sicherheitsgrenze sind sie nicht: Laut Spezifikation müssen Clients sie als nicht vertrauenswürdig behandeln, solange sie nicht von einem vertrauenswürdigen Server stammen. [[2]][q2]
+
+**Strukturierte Ausgabe:** Mit `generateOutputSchema = true` veröffentlicht der Server zusätzlich ein Ausgabeschema und liefert das Ergebnis als `structuredContent`. Clients, die das auswerten, müssen den JSON-Text dann nicht selbst parsen.
+
+**Fehlermeldungen landen beim Modell.** Wirft ein Tool eine Exception, antwortet der Server nicht mit einem Protokollfehler, sondern mit einem Ergebnis mit `isError: true` und dem Text der Exception. Im Test kam so bei einer unbekannten Bestellnummer „Bestellung 9999 nicht gefunden“ beim Client an. Das ist gewollt, denn das Modell kann darauf reagieren und etwa nachfragen. Es heißt aber auch: Exception-Texte aus Tools dürfen keine internen Details wie SQL, Hostnamen oder Stacktraces enthalten.
+
+## Resources und Prompts
+
+Resources liefern Inhalte, die ein Client als Kontext laden kann. Prompts sind Vorlagen, die ein Nutzer im Client auswählt, oft als Slash-Befehl. [[2]][q2] Beide definierst du genauso wie Tools: [[10]][q10]
+
+```java
+@Component
+public class SupportResources {
+
+    @McpResource(uri = "policy://rueckgabe",
+            name = "rueckgaberichtlinie",
+            description = "Rückgaberichtlinie des Shops",
+            mimeType = "text/markdown")
+    public String returnPolicy() {
+        return """
+                # Rückgaberichtlinie
+                - Rückgabe innerhalb von 30 Tagen nach Zustellung
+                - Beschädigte Ware: Erstattung oder Ersatz nach Wahl des Kunden
+                - Erstattungen gibt ein Mitarbeiter frei
+                """;
+    }
+
+    @McpPrompt(name = "reklamation_beantworten",
+            description = "Entwirft eine Antwort auf eine Reklamation zu einer Bestellung")
+    public GetPromptResult answerComplaint(
+            @McpArg(name = "bestellnummer", description = "Bestellnummer", required = true) String orderId) {
+        String text = """
+                Prüfe Bestellung %s mit den Tools find_order und check_refund.
+                Halte dich an die Rückgaberichtlinie (policy://rueckgabe).
+                Sag keine Erstattung zu, sondern dass ein Mitarbeiter den Fall prüft.
+                """.formatted(orderId);
+        return new GetPromptResult("Reklamation beantworten",
+                List.of(new PromptMessage(Role.USER, new TextContent(text))));
+    }
+}
+```
+
+`GetPromptResult`, `PromptMessage`, `Role` und `TextContent` kommen aus `io.modelcontextprotocol.spec.McpSchema`. Wie gut ein Client Resources und Prompts einbindet, ist sehr unterschiedlich. Tools versteht praktisch jeder Client; bei Resources und Prompts lohnt ein Blick in die Dokumentation des Clients, den deine Nutzer verwenden.
+
+## Den Server starten und mit curl testen
+
+Mit `./mvnw spring-boot:run` startet der Server auf Port 8080. Zum Ausprobieren brauchst du keinen KI-Client, `curl` reicht. Bei Streamable HTTP beginnt jede Verbindung mit `initialize`:
+
+```bash
+curl -s -D headers.txt http://localhost:8080/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{
+        "protocolVersion":"2025-11-25","capabilities":{},
+        "clientInfo":{"name":"curl","version":"1.0"}}}'
+```
+
+Die Antwort enthält Protokollversion, Fähigkeiten und den Servernamen, der Response-Header `Mcp-Session-Id` die Session. Nach der Benachrichtigung `notifications/initialized` rufst du mit dieser Session-ID ein Tool auf:
+
+```bash
+curl -s http://localhost:8080/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H "Mcp-Session-Id: $SESSION_ID" \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call",
+       "params":{"name":"check_refund","arguments":{"orderId":"4712"}}}'
+```
+
+Die Antwort kommt als Server-Sent Event (hier gekürzt und umbrochen):
+
+```text
+event:message
+data: {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text",
+  "text":"{\"possible\":false,\"reason\":\"Rückgabefrist von 30 Tagen ist abgelaufen\"}"}],
+  "isError":false}}
+```
+
+Für Klickarbeit gibt es den MCP Inspector, ein Testwerkzeug des MCP-Projekts. Mit `curl` siehst du aber genau, was auf der Leitung passiert, und das hilft beim Debuggen.
+
+## MCP 2026-07-28 aktivieren
+
+Für die neue Revision änderst du eine Zeile:
+
+```yaml
+spring:
+  ai:
+    mcp:
+      server:
+        protocol: MODERN
+```
+
+Der Tool-Code bleibt gleich. Im Log steht jetzt `Registered modern tools: 2`. Ein Tool-Aufruf braucht keinen Handshake mehr, dafür trägt jeder Request alles, was der Server wissen muss:
+
+```bash
+curl -s http://localhost:8080/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H 'MCP-Protocol-Version: 2026-07-28' \
+  -H 'Mcp-Method: tools/call' \
+  -H 'Mcp-Name: check_refund' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
+        "_meta":{
+          "io.modelcontextprotocol/protocolVersion":"2026-07-28",
+          "io.modelcontextprotocol/clientCapabilities":{}
+        },
+        "name":"check_refund","arguments":{"orderId":"4712"}}}'
+```
+
+Fehlt ein Header oder ein `_meta`-Feld, sagt der Server genau, was fehlt, etwa `Missing required header: Mcp-Name`. Passt der Header nicht zum Tool-Namen im Body, lehnt er den Request ebenfalls ab. Die Antwort kommt als normales JSON und enthält neben `content` und `isError` das Feld `resultType: "complete"`.
+
+Zwei Punkte solltest du vor dem Produktivbetrieb kennen.
+
+**Das Secret für mehrere Instanzen.** Beim Start schreibt Spring AI eine Warnung: Ohne konfigurierten Schlüssel erzeugt der `HmacRequestStateCodec` einen zufälligen Schlüssel pro Prozess. Er versiegelt den Zwischenstand von Multi-Round-Trip-Requests, und eine andere Instanz kann diesen Stand dann nicht öffnen. Läuft der Server mehrfach hinter einem Load Balancer, setze `spring.ai.mcp.server.modern.request-state-secret` auf denselben Wert für alle Instanzen, mindestens 32 Byte lang. [[9]][q9]
+
+**Der Kontext im Tool.** Ein Tool kann Informationen zur Anfrage als Parameter bekommen. Der Typ `McpSyncRequestContext` funktioniert im Modern-Modus nicht, dort heißt das Gegenstück `McpModernRequestContext`. [[10]][q10] Ein Parameter vom Typ `McpTransportContext` funktioniert dagegen in beiden Modi. Diesen Typ nutzt der nächste Abschnitt.
+
+## Den MCP-Server absichern
+
+Die Starter von Spring AI bringen selbst keine Authentifizierung oder Autorisierung mit. [[8]][q8] Ein MCP-Server im Netzwerk ist eine API wie jede andere, und das Modell auf der anderen Seite kann durch manipulierte Inhalte zu Aufrufen gebracht werden, die der Nutzer nie wollte. Drei Dinge gehören deshalb dazu.
+
+### Origin-Header prüfen
+
+Die MCP-Spezifikation verlangt für Streamable HTTP, dass Server den `Origin`-Header prüfen und bei einem ungültigen Wert mit 403 antworten. Sonst könnte eine fremde Webseite über den Browser eines Nutzers einen lokal laufenden MCP-Server aufrufen, ein Angriff namens DNS Rebinding. [[3]][q3] Die beiden Transporte von Spring AI verhalten sich hier unterschiedlich:
+
+- **MODERN** lehnt jeden Request mit `Origin`-Header ab, solange du keine Origins erlaubst. [[6]][q6] Im Test bekam selbst `http://localhost:8080` ein 403. Clients außerhalb des Browsers, etwa ein Java-Client, schicken in der Regel keinen `Origin`-Header und sind nicht betroffen.
+- **STREAMABLE** prüft den Header standardmäßig nicht. Mein Test mit `Origin: https://evil.example` lief ohne zusätzliche Konfiguration durch.
+
+Für Streamable HTTP setzt du deshalb einen Validator über einen Customizer, siehe unten. Musst du Browser-Clients zulassen, erlaubst du deren Origin mit `allowedOrigin(...)`.
+
+### Authentifizierung mit OAuth
+
+Für HTTP-Server sieht die Spezifikation OAuth 2.1 vor. Der MCP-Server ist dabei ein **Resource Server**: Er prüft Access Tokens, stellt sie aber nicht aus. Damit ein Client weiß, wo er ein Token bekommt, muss der Server **OAuth 2.0 Protected Resource Metadata** nach RFC 9728 veröffentlichen und bei einer Anfrage ohne Token mit `401` und einem `WWW-Authenticate`-Header antworten, der auf diese Metadaten zeigt. [[4]][q4]
+
+Spring Security 7.2 kann das bereits. [[11]][q11] Du brauchst den Starter `spring-boot-starter-security-oauth2-resource-server` und eine `SecurityFilterChain`:
+
+```java
+@Configuration
+public class McpSecurityConfig {
+
+    static final String CUSTOMER_ID = "customerId";
+
+    @Bean
+    SecurityFilterChain mcpSecurity(HttpSecurity http,
+            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuer) {
+        return http
+                .authorizeHttpRequests(auth -> auth.anyRequest().hasAuthority("SCOPE_bestellungen.read"))
+                .oauth2ResourceServer(oauth -> oauth
+                        .jwt(Customizer.withDefaults())
+                        .protectedResourceMetadata(metadata -> metadata
+                                .protectedResourceMetadataCustomizer(resource -> resource
+                                        .authorizationServer(issuer)
+                                        .scope("bestellungen.read")
+                                        .resourceName("Bestellungen MCP-Server")
+                                        .tlsClientCertificateBoundAccessTokens(false))))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .build();
+    }
+}
+```
+
+Dazu kommen Issuer und Audience in der `application.yaml`:
+
+```yaml
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://auth.example.com/realms/shop
+          audiences: https://mcp.example.com
+```
+
+Ein Request ohne Token bekommt jetzt diese Antwort:
+
+```text
+HTTP/1.1 401
+WWW-Authenticate: Bearer resource_metadata="http://localhost:8080/.well-known/oauth-protected-resource"
+```
+
+Unter dieser Adresse liefert Spring Security die Metadaten mit Authorization Server, Scope und Namen. Zwei Dinge sind mir dabei aufgefallen:
+
+- Ohne `tlsClientCertificateBoundAccessTokens(false)` stand in den Metadaten `"tls_client_certificate_bound_access_tokens": true`. Das kündigt an Zertifikate gebundene Tokens an. Wer kein Mutual TLS nutzt, sollte den Wert ausdrücklich auf `false` setzen.
+- Den Wert `resource` leitet Spring Security aus der URL der Anfrage ab. Die Spezifikation verlangt, dass Tokens genau für diesen Server ausgestellt sind. [[4]][q4] Die konfigurierte Audience muss deshalb zu dieser URL passen. Hinter einem Reverse Proxy brauchst du dafür korrekt weitergereichte Forwarded-Header.
+
+Eine Alternative ist das Community-Projekt `mcp-security`, das OAuth, API-Keys und Origin-Prüfung für Spring-AI-Server bündelt. Laut README funktionieren die Versionen 0.1.x aber nur mit Spring AI 2.0.x. [[12]][q12] Für Spring AI 2.1 habe ich deshalb Spring Security direkt verwendet.
+
+### Die Identität gehört in den Kontext, nicht in die Argumente
+
+Der wichtigste Punkt betrifft das Tool selbst. Hätte `find_order` einen Parameter `customerId`, könnte das Modell, etwa durch eine manipulierte Anfrage, die Bestellungen eines anderen Kunden abfragen. Die Identität muss aus dem geprüften Token kommen. Im [Agenten-Artikel](/blog/ai-agents-mit-java-entwickeln#tools-mit-spring-ai-definieren) übernimmt das der `ToolContext`; beim MCP-Server ist es der `McpTransportContext`.
+
+Ein `McpTransportContextExtractor` überträgt den angemeldeten Nutzer aus dem HTTP-Request in diesen Kontext. Für Streamable HTTP registrierst du ihn zusammen mit dem Origin-Validator über einen Customizer, der Modern-Transport übernimmt die Extractor-Bean direkt:
+
+```java
+    // in McpSecurityConfig
+
+    @Bean
+    McpTransportContextExtractor<ServerRequest> mcpTransportContextExtractor() {
+        return request -> request.principal()
+                .map(principal -> McpTransportContext.create(Map.of(CUSTOMER_ID, principal.getName())))
+                .orElse(McpTransportContext.EMPTY);
+    }
+
+    @Bean
+    McpServerCustomizer<WebMvcStreamableServerTransportProvider.Builder> streamableTransport(
+            McpTransportContextExtractor<ServerRequest> extractor) {
+        return builder -> builder
+                .contextExtractor(extractor)
+                .securityValidator(DefaultServerTransportSecurityValidator.builder().build());
+    }
+```
+
+`principal.getName()` ist bei einem JWT standardmäßig der Claim `sub`. Steht die Kundennummer in einem eigenen Claim, liest du sie stattdessen aus dem `JwtAuthenticationToken`.
+
+Das Tool bekommt den Kontext als zusätzlichen Parameter, den Spring AI nicht in das Schema für das Modell aufnimmt:
+
+```java
+    @McpTool(name = "find_order",
+            description = "Liefert Status, Lieferdatum und Betrag einer Bestellung des angemeldeten Kunden",
+            generateOutputSchema = true,
+            annotations = @McpAnnotations(readOnlyHint = true, destructiveHint = false,
+                    idempotentHint = true, openWorldHint = false))
+    public OrderSummary findOrder(
+            @McpToolParam(description = "Bestellnummer, z. B. 4711") String orderId,
+            McpTransportContext context) {
+        return orderService.findForCustomer(orderId, customerId(context));
+    }
+
+    private static String customerId(McpTransportContext context) {
+        Object customerId = context.get(McpSecurityConfig.CUSTOMER_ID);
+        if (customerId == null) {
+            throw new IllegalStateException("Kein angemeldeter Kunde");
+        }
+        return (String) customerId;
+    }
+```
+
+Im Service behandle ich fremde Bestellungen wie nicht vorhandene. So verrät das Tool nicht, welche Bestellnummern existieren:
+
+```java
+    public OrderSummary findForCustomer(String orderId, String customerId) {
+        Order order = orders.get(orderId);
+        if (order == null || !order.customerId().equals(customerId)) {
+            throw new NoSuchElementException("Bestellung " + orderId + " nicht gefunden");
+        }
+        return order.summary();
+    }
+```
+
+Die Regel gilt wie bei jedem Tool: Die Berechtigung prüft der Service, nicht der Prompt und nicht die Tool-Beschreibung. Mehr dazu im Abschnitt [Tool Calling braucht klare Grenzen](/blog/llms-mit-spring-boot-integrieren#tool-calling-braucht-klare-grenzen).
+
+## Den Server mit dem MCP-Client testen
+
+Für automatisierte Tests nutze ich den Client des MCP Java SDK gegen den echten, auf einem zufälligen Port gestarteten Server. Den Authorization Server ersetzt im Test ein `JwtDecoder`, der den Token-Wert als Kundennummer übernimmt:
+
+```java
+@TestConfiguration
+class TestJwtConfig {
+
+    @Bean
+    JwtDecoder jwtDecoder() {
+        return token -> Jwt.withTokenValue(token)
+                .header("alg", "none")
+                .subject(token)
+                .claim("scope", "bestellungen.read")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(60))
+                .build();
+    }
+}
+```
+
+Der Test verbindet sich mit dem Token eines Kunden und prüft, dass er die Bestellung eines anderen Kunden nicht sieht:
+
+```java
+@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@Import(TestJwtConfig.class)
+class OrderToolsIntegrationTest {
+
+    @LocalServerPort
+    int port;
+
+    @Test
+    void kundeSiehtKeineFremdeBestellung() {
+        try (McpSyncClient client = connect("kunde-2")) {
+            CallToolResult result = client.callTool(
+                    new CallToolRequest("find_order", Map.of("orderId", "4711")));
+
+            assertThat(result.isError()).isTrue();
+            assertThat(text(result)).contains("nicht gefunden");
+        }
+    }
+
+    private McpSyncClient connect(String token) {
+        var transport = HttpClientStreamableHttpTransport.builder("http://localhost:" + port)
+                .httpRequestCustomizer((builder, method, uri, body, context) ->
+                        builder.header("Authorization", "Bearer " + token))
+                .build();
+        McpSyncClient client = McpClient.sync(transport).build();
+        client.initialize();
+        return client;
+    }
+
+    private static String text(CallToolResult result) {
+        return ((TextContent) result.content().getFirst()).text();
+    }
+}
+```
+
+`McpClient` und `McpSyncClient` stammen aus `io.modelcontextprotocol.client`, die Request- und Result-Typen aus `McpSchema`. Weitere Tests in meinem Projekt prüfen den Zugriff auf die eigene Bestellung, dass der Kontext-Parameter nicht im Tool-Schema auftaucht, die Antwort `401` mit `resource_metadata` ohne Token und die Ablehnung eines fremden `Origin`. Eine zweite Testklasse startet den Server mit `protocol=MODERN` und schickt die Requests mit dem `HttpClient` des JDK, inklusive der Prüfung, dass `initialize` abgelehnt wird.
+
+Solche Tests brauchen kein Sprachmodell, laufen in wenigen Sekunden und gehören in jeden Build. Welches Tool ein Modell in welcher Situation wählt, prüfen sie nicht; dafür brauchst du Szenario-Tests gegen ein echtes Modell, wie im [Agenten-Artikel](/blog/ai-agents-mit-java-entwickeln#testen) beschrieben.
+
+## Den Server verbinden: Claude Code und Spring AI
+
+In **Claude Code** meldest du einen HTTP-Server mit einem Befehl an:
+
+```bash
+claude mcp add --transport http bestellungen https://mcp.example.com/mcp
+```
+
+Bei Servern mit OAuth kümmert sich Claude Code laut Dokumentation um die Anmeldung. [[13]][q13] Das habe ich mit diesem Server nicht ausprobiert.
+
+Ein **eigener Agent mit Spring AI** nutzt den Starter `spring-ai-starter-mcp-client` und trägt die Verbindung in der Konfiguration ein:
+
+```yaml
+spring:
+  ai:
+    mcp:
+      client:
+        streamable-http:
+          connections:
+            bestellungen:
+              url: https://mcp.example.com
+              endpoint: /mcp
+```
+
+Für einen Server mit `protocol: MODERN` setzt du in der Verbindung zusätzlich `protocol: MODERN`. Die Tools des Servers stehen danach als `ToolCallbackProvider` bereit und lassen sich an den `ChatClient` übergeben:
+
+```java
+@Service
+public class SupportAgent {
+
+    private final ChatClient chatClient;
+    private final ToolCallbackProvider mcpTools;
+
+    public SupportAgent(ChatClient.Builder builder, ToolCallbackProvider mcpTools) {
+        this.chatClient = builder.build();
+        this.mcpTools = mcpTools;
+    }
+
+    public String handle(String request) {
+        return chatClient.prompt()
+                .user(request)
+                .toolCallbacks(mcpTools)
+                .call()
+                .content();
+    }
+}
+```
+
+Das Access Token hängst du für Streamable HTTP über eine Bean vom Typ `McpSyncHttpClientRequestCustomizer` an jede Anfrage, so wie im Test oben. Der Agent selbst bleibt damit genauso aufgebaut wie im [Agenten-Artikel](/blog/ai-agents-mit-java-entwickeln#den-agenten-mit-dem-chatclient-aufbauen), nur liegen die Tools jetzt in einem eigenen Dienst. Diesen Client-Code habe ich kompiliert, aber nicht gegen ein Modell ausgeführt.
+
+## Typische Fehler beim Bau eines MCP-Servers
+
+- **`protocol` nicht gesetzt:** Der Server startet mit dem veralteten SSE-Transport, und Clients finden unter `/mcp` nichts.
+- **Hinweise nur halb gesetzt:** Die Vorgaben für `destructiveHint` und `openWorldHint` sind `true`. Setze alle vier Werte bewusst.
+- **Identität als Tool-Argument:** Kundennummer, Mandant oder Rolle gehören in den Transportkontext, nicht in das Schema für das Modell.
+- **Interna in Exception-Texten:** Was ein Tool wirft, liest das Modell, und über das Modell oft auch der Nutzer.
+- **Keine Origin-Prüfung bei Streamable HTTP:** Der Transport prüft den Header nicht von selbst.
+- **Mehrere Modern-Instanzen ohne gemeinsames Secret:** Ohne `request-state-secret` kann eine Instanz den Zwischenstand der anderen nicht lesen.
+- **Zu viele Tools:** Jedes Tool kostet Kontext beim Client. Ein Server mit fünf gut beschriebenen Tools ist nützlicher als einer mit fünfzig.
+
+## Fazit
+
+Einen MCP-Server mit Java zu bauen, ist mit Spring AI 2.1 wenig Code: ein Starter, ein paar annotierte Methoden und eine Zeile, die das Protokoll festlegt. Die eigentliche Arbeit liegt woanders, nämlich im Zuschnitt der Tools, in ihren Beschreibungen und in der Absicherung. Ein MCP-Server ist eine API, die ein Sprachmodell bedient. Er braucht deshalb dieselbe Sorgfalt bei Anmeldung und Berechtigungen wie jede andere API, und zusätzlich die Annahme, dass die Argumente manipuliert sein können.
+
+Bei der Protokollwahl würde ich heute mit **STREAMABLE** starten und auf **MODERN** wechseln, sobald die eigenen Clients die Revision 2026-07-28 sprechen. Weil die Tools in beiden Fällen identisch bleiben, kostet diese Entscheidung später wenig.
+
+## Häufige Fragen zum MCP-Server mit Java
+
+### Was ist ein MCP-Server?
+
+Ein MCP-Server stellt Tools, Resources und Prompts über das Model Context Protocol bereit. KI-Anwendungen wie Claude Code oder eigene Agenten verbinden sich als Client und können die Tools aufrufen, ohne dass für jede Kombination eine eigene Integration nötig ist.
+
+### Brauche ich Spring AI, um einen MCP-Server in Java zu bauen?
+
+Nein. Das offizielle MCP Java SDK funktioniert auch ohne Spring. Spring AI ergänzt es um Auto-Configuration, die Annotationen `@McpTool`, `@McpResource` und `@McpPrompt` sowie die Einbindung in Spring MVC oder WebFlux.
+
+### Welchen Transport sollte ich für einen MCP-Server wählen?
+
+Für lokale Werkzeuge STDIO, für Server im Netzwerk Streamable HTTP. Die neue Revision 2026-07-28 aktivierst du in Spring AI mit `protocol: MODERN`, wenn deine Clients sie unterstützen. SSE ist veraltet, aber die Voreinstellung, wenn du kein Protokoll angibst.
+
+### Unterstützt Spring AI die MCP-Spezifikation 2026-07-28?
+
+Ja, seit Spring AI 2.1.0 vom 20. November 2026, sowohl für Server als auch für Clients. Grundlage ist das MCP Java SDK 2.2.0.
+
+### Wie sichere ich einen MCP-Server ab?
+
+Mit OAuth als Resource Server inklusive Protected Resource Metadata, einer Prüfung des `Origin`-Headers und Berechtigungsprüfungen im Service. Die Identität des Nutzers kommt aus dem Token über den Transportkontext ins Tool, nie aus den Tool-Argumenten.
+
+### Was ist der Unterschied zwischen MCP und Tool Calling?
+
+Tool Calling ist die Fähigkeit eines Modells, Funktionen aufzurufen. MCP ist das Protokoll, über das ein Client diese Funktionen bei einem fremden Server findet und aufruft. Ein Spring-AI-Agent kann beides kombinieren: eigene `@Tool`-Methoden und Tools von MCP-Servern.
+
+## Quellen
+
+1. [MCP Blog: The 2026-07-28 Specification][q1]
+2. [MCP-Spezifikation 2026-07-28: Tools][q2]
+3. [MCP-Spezifikation 2025-11-25: Transports][q3]
+4. [MCP-Spezifikation 2026-07-28: Authorization][q4]
+5. [MCP Java SDK: Releases][q5]
+6. [MCP Java SDK: Modern Server][q6]
+7. [Spring Blog: Spring AI 2.1.0 GA Available Now][q7]
+8. [Spring AI: MCP Server Boot Starter][q8]
+9. [Spring AI: MCP Modern Server][q9]
+10. [Spring AI: MCP Server Annotations][q10]
+11. [Spring Security: OAuth 2.0 Protected Resource Metadata][q11]
+12. [Spring AI Community: mcp-security][q12]
+13. [Claude Code: MCP][q13]
+
+[q1]: https://blog.modelcontextprotocol.io/posts/2026-07-28/ "MCP Blog: The 2026-07-28 Specification"
+[q2]: https://modelcontextprotocol.io/specification/2026-07-28/server/tools "MCP-Spezifikation 2026-07-28: Tools"
+[q3]: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports "MCP-Spezifikation 2025-11-25: Transports"
+[q4]: https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization "MCP-Spezifikation 2026-07-28: Authorization"
+[q5]: https://github.com/modelcontextprotocol/java-sdk/releases "MCP Java SDK: Releases"
+[q6]: https://java.sdk.modelcontextprotocol.io/latest/server-modern/ "MCP Java SDK: Modern Server"
+[q7]: https://spring.io/blog/2026/11/20/spring-ai-2-1-0-GA-available-now "Spring Blog: Spring AI 2.1.0 GA Available Now"
+[q8]: https://docs.spring.io/spring-ai/reference/api/mcp/mcp-server-boot-starter-docs.html "Spring AI: MCP Server Boot Starter"
+[q9]: https://docs.spring.io/spring-ai/reference/api/mcp/mcp-modern-server-boot-starter-docs.html "Spring AI: MCP Modern Server"
+[q10]: https://docs.spring.io/spring-ai/reference/api/mcp/mcp-annotations-server.html "Spring AI: MCP Server Annotations"
+[q11]: https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/protected-resource-metadata.html "Spring Security: OAuth 2.0 Protected Resource Metadata"
+[q12]: https://github.com/spring-ai-community/mcp-security "Spring AI Community: mcp-security"
+[q13]: https://code.claude.com/docs/en/mcp "Claude Code: MCP"
