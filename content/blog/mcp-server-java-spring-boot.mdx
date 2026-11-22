@@ -5,6 +5,12 @@ description: "MCP-Server mit Java bauen: Tools, Resources und Prompts mit Spring
 shortAnswer: "Mit Spring AI wird eine Spring-Boot-Anwendung über den Starter spring-ai-starter-mcp-server-webmvc zum MCP-Server. Tools, Resources und Prompts sind normale Methoden mit @McpTool, @McpResource und @McpPrompt. Wichtig: Setze spring.ai.mcp.server.protocol ausdrücklich, sonst startet der Server mit dem veralteten SSE-Transport. STREAMABLE ist heute die kompatible Wahl, MODERN spricht seit Spring AI 2.1 die neue, zustandslose MCP-Revision 2026-07-28. Für den Betrieb brauchst du zusätzlich OAuth, eine Origin-Prüfung und die Identität des Nutzers im Tool, nicht in den Tool-Argumenten."
 date: "2026-11-21"
 ogImage: "/images/og/mcp-server-java-spring-boot.png"
+testedWith:
+  - "Spring AI 2.1.0"
+  - "Spring Boot 4.2.0"
+  - "MCP Java SDK 2.2.0"
+  - "Java 25"
+repo: "https://github.com/samo0892/spring-ai-mcp-server-tutorial"
 tags: ["Java", "Spring AI", "MCP", "KI"]
 keywords:
   - "MCP Server Java"
@@ -24,7 +30,7 @@ Ein MCP-Server stellt Werkzeuge, Daten und Prompt-Vorlagen so bereit, dass jeder
 
 Der Zeitpunkt passt: Spring AI 2.1.0 ist am 20. November 2026 erschienen und unterstützt neben Streamable HTTP auch die neue, zustandslose MCP-Revision 2026-07-28. [[7]][q7] Welche der beiden Varianten du heute wählen solltest, klärt ein eigener Abschnitt.
 
-> **Stand: 21. November 2026.** Die Beispiele verwenden Spring AI 2.1.0, Spring Boot 4.2.0, das MCP Java SDK 2.2.0 und Java 25. Ich habe das Projekt kompiliert, den Server gestartet und per `curl` mit beiden Protokollen aufgerufen; acht Integrationstests prüfen Tools, Schema, Anmeldung und Origin-Prüfung. Gegen Claude Code oder andere Clients habe ich den Server nicht getestet. Die API für MCP 2026-07-28 kann sich laut Java SDK bis Version 3.0 noch in Minor-Releases ändern. [[5]][q5]
+> **Stand: 21. November 2026.** Den vollständigen Code findest du im GitHub-Repository [samo0892/spring-ai-mcp-server-tutorial](https://github.com/samo0892/spring-ai-mcp-server-tutorial). Es enthält den abgesicherten Endstand des Servers und alle Tests. Ich habe das Projekt kompiliert, den Server gestartet und per `curl` mit beiden Protokollen aufgerufen; acht Integrationstests prüfen Tools, Schema, Anmeldung und Origin-Prüfung. Gegen Claude Code oder andere Clients habe ich den Server nicht getestet. Die API für MCP 2026-07-28 kann sich laut Java SDK bis Version 3.0 noch in Minor-Releases ändern. [[5]][q5]
 
 ## Was ist ein MCP-Server?
 
@@ -499,7 +505,7 @@ class OrderToolsIntegrationTest {
 }
 ```
 
-`McpClient` und `McpSyncClient` stammen aus `io.modelcontextprotocol.client`, die Request- und Result-Typen aus `McpSchema`. Weitere Tests in meinem Projekt prüfen den Zugriff auf die eigene Bestellung, dass der Kontext-Parameter nicht im Tool-Schema auftaucht, die Antwort `401` mit `resource_metadata` ohne Token und die Ablehnung eines fremden `Origin`. Eine zweite Testklasse startet den Server mit `protocol=MODERN` und schickt die Requests mit dem `HttpClient` des JDK, inklusive der Prüfung, dass `initialize` abgelehnt wird.
+`McpClient` und `McpSyncClient` stammen aus `io.modelcontextprotocol.client`, die Request- und Result-Typen aus `McpSchema`. Weitere Tests im [Repository zum Artikel](https://github.com/samo0892/spring-ai-mcp-server-tutorial) prüfen den Zugriff auf die eigene Bestellung, dass der Kontext-Parameter nicht im Tool-Schema auftaucht, die Antwort `401` mit `resource_metadata` ohne Token und die Ablehnung eines fremden `Origin`. Eine zweite Testklasse startet den Server mit `protocol=MODERN` und schickt die Requests mit dem `HttpClient` des JDK, inklusive der Prüfung, dass `initialize` abgelehnt wird.
 
 Solche Tests brauchen kein Sprachmodell, laufen in wenigen Sekunden und gehören in jeden Build. Welches Tool ein Modell in welcher Situation wählt, prüfen sie nicht; dafür brauchst du Szenario-Tests gegen ein echtes Modell, wie im [Agenten-Artikel](/blog/ai-agents-mit-java-entwickeln#testen) beschrieben.
 
