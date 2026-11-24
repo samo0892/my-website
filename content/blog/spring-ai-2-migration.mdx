@@ -1,0 +1,601 @@
+---
+title: "Spring AI 2.0 Migration: So bringst du deine Anwendung von 1.x auf 2.1"
+metaTitle: "Spring AI 2.0 Migration: Upgrade von 1.x auf 2.1"
+description: "Spring AI 2.0 Migration Schritt für Schritt: von 1.x auf 2.1 mit Spring Boot 4. Compile-Fehler, stille Verhaltensänderungen, Tests und Werkzeuge."
+shortAnswer: "Spring AI 2.x läuft nur mit Spring Boot 4, und Spring AI 1.x läuft nicht mit Spring Boot 4. Beide Upgrades passieren deshalb gemeinsam. Ziel ist heute Spring AI 2.1 mit Spring Boot 4.2. Die Compile-Fehler sind schnell behoben, gefährlich sind die stillen Änderungen: Ein ChatModel führt keine Tools mehr aus, die Standard-Temperatur von 0.7 fällt weg, und Chat-Memory-Advisors brauchen bei jedem Aufruf eine Conversation-ID. Sichere das Verhalten vorher mit Tests gegen einen nachgebauten Modell-Endpunkt ab."
+date: "2026-11-24"
+ogImage: "/images/og/spring-ai-2-migration.png"
+testedWith:
+  - "Spring AI 1.1.8 → 2.1.0"
+  - "Spring Boot 3.5.16 → 4.2.0"
+  - "Spring AI 2.0.3 mit Spring Boot 4.1.3"
+  - "Java 21"
+tags: ["Java", "Spring AI", "Spring Boot", "KI"]
+keywords:
+  - "Spring AI 2.0 Migration"
+  - "Spring AI 2.0"
+  - "Spring AI 2.1"
+  - "Spring AI Upgrade"
+  - "Spring AI 1.x auf 2.0"
+  - "Spring AI Breaking Changes"
+  - "Spring Boot 4 Migration"
+service: "llm-integration-java"
+serviceText: "Du willst deine Spring-AI-Anwendung auf 2.x bringen, ohne dass Tool-Aufrufe, Chat-Verläufe oder Kosten unbemerkt kippen? Ich plane die Migration mit dir, sichere das Verhalten mit Tests ab und setze das Upgrade um."
+---
+
+Seit dem 30. Juni 2026 bekommen Spring AI 1.0.x und 1.1.x keine Open-Source-Patches mehr. Das gilt auch für Spring Boot 3.5, auf dem beide Linien laufen. [[1]][q1][[2]][q2] Wer Spring AI in Produktion betreibt, muss also auf 2.x umsteigen. Seit dem 20. November 2026 ist dafür Spring AI 2.1 verfügbar. [[4]][q4]
+
+Die Migration ist kein normales Minor-Upgrade. Spring AI 2.0 setzt auf Spring Boot 4 und Spring Framework 7, hat Tool Calling neu aufgebaut und viele veraltete APIs entfernt. [[3]][q3] Die meisten Änderungen meldet der Compiler. Einige aber nicht: Der Code kompiliert, die Anwendung startet, und trotzdem verhält sie sich anders als vorher.
+
+In diesem Artikel migriere ich eine kleine Support-Anwendung von Spring AI 1.1.8 auf 2.1.0. Du siehst die echten Compile-Fehler, die zwei stillen Änderungen, die meine Tests gefunden haben, und eine Checkliste für alles, was in meinem Beispiel nicht vorkommt.
+
+> **Stand: 24. November 2026.** Ich habe das Beispielprojekt von Spring AI 1.1.8 mit Spring Boot 3.5.16 auf Spring AI 2.1.0 mit Spring Boot 4.2.0 migriert. Den Endstand habe ich zusätzlich mit Spring AI 2.0.3 und Spring Boot 4.1.3 getestet. Die Tests laufen gegen einen nachgebauten OpenAI-Endpunkt, nicht gegen ein echtes Modell. Was ich nicht selbst ausgeführt habe, ist mit der Quelle belegt, vor allem die [Upgrade Notes von Spring AI](https://docs.spring.io/spring-ai/reference/upgrade-notes.html). [[5]][q5]
+
+## Musst du jetzt migrieren?
+
+Die Support-Zeiträume stehen auf den Projektseiten von Spring: [[1]][q1][[2]][q2]
+
+| Version | Spring Boot | Open-Source-Support bis | Letzte OSS-Version |
+|---|---|---|---|
+| Spring AI 1.0.x | 3.4, 3.5 | 30. Juni 2026 | 1.0.9 |
+| Spring AI 1.1.x | 3.5 | 30. Juni 2026 | 1.1.8 |
+| Spring AI 2.0.x | 4.0, 4.1 | 31. Juli 2027 | 2.0.3 |
+| Spring AI 2.1.x | 4.2 | 31. Dezember 2027 | 2.1.0 |
+
+Für 1.1.x bietet Broadcom kommerziellen Support bis 2032 an, für 1.0.x bis Juni 2027. [[1]][q1] Wenn du den nicht hast, bekommt deine Anwendung keine Sicherheitsfixes mehr, weder für Spring AI noch für Spring Boot. Das ist bei Spring AI kein theoretisches Risiko: Laut Spring-Blog hat allein 2.0.1 sieben weitere CVEs geschlossen. [[4]][q4]
+
+## 2.0 oder direkt 2.1?
+
+Ich würde direkt auf **Spring AI 2.1 mit Spring Boot 4.2** gehen. Die Linie hat den längsten Support, und der Schritt von 2.0 auf 2.1 ist für die meisten Anwendungen klein. Laut Spring-Blog reicht oft schon das Anheben der beiden Versionen. [[4]][q4] Mein migriertes Beispiel läuft unverändert mit 2.0.3 und 2.1.0. Unter 2.1 meldet der Compiler nur zusätzliche Deprecation-Warnungen für `ChatMemory`.
+
+Spring AI 2.0.x mit Spring Boot 4.1 ist die Wahl, wenn eine andere Abhängigkeit Spring Boot 4.2 noch nicht unterstützt. Dann nimm das neueste Patch-Release, nicht 2.0.0. Ein Beispiel: In 2.0.0 hat die Auto-Configuration des MCP-Clients Beans vom Typ `McpSyncHttpClientRequestCustomizer` nicht angewendet, ein Access Token aus so einer Bean fehlte also. Seit 2.0.1 werden sie wieder angewendet; das habe ich im Quellcode der Releases nachgesehen.
+
+Wer Anthropic nutzt, hat mit 2.1 mehr zu tun: Das Modul verwendet das Anthropic Java SDK 3.x, `temperature`, `topP` und `topK` müssen raus, und der API-Key geht als `Authorization: Bearer` statt als `X-Api-Key` an die API. [[5]][q5][[11]][q11]
+
+## Die Migration in fünf Schritten
+
+1. Auf die letzte 1.x-Version aktualisieren
+2. Das heutige Verhalten mit Tests festhalten
+3. Spring Boot 4 und Spring AI 2.x gemeinsam anheben
+4. Compile-Fehler beheben
+5. Stille Änderungen prüfen und Properties umstellen
+
+Das Beispiel dafür ist ein Support-Assistent mit dem OpenAI-Starter. Er nutzt die Muster, die ich in 1.x-Projekten am häufigsten sehe: einen `ChatClient` mit Tools und Chat Memory, eine Funktion als `Function`-Bean, auf die der Code per Name verweist, und einen Service, der das `ChatModel` direkt mit Tools aufruft.
+
+## Schritt 1: Auf Spring AI 1.1.8 aktualisieren
+
+Spring Boot empfiehlt, vor dem Sprung auf Version 4 die letzte 3.5.x-Version einzuspielen und Deprecation-Warnungen zu beseitigen. [[7]][q7] Für Spring AI heißt das: erst auf 1.1.8 (oder 1.0.9).
+
+Dieser Schritt hat bei mir schon etwas kaputt gemacht. Seit **1.1.6 und 1.0.7** vom 8. Mai 2026 verlangen die Chat-Memory-Advisors eine Conversation-ID bei jedem Aufruf. Die Release Notes führen das ausdrücklich als Breaking Change in einem Patch-Release. [[6]][q6] Ein Aufruf ohne ID endet mit:
+
+```text
+java.lang.IllegalArgumentException: conversationId cannot be null
+    at org.springframework.ai.chat.client.advisor.api.BaseChatMemoryAdvisor.getConversationId(BaseChatMemoryAdvisor.java:39)
+    at org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor.before(MessageChatMemoryAdvisor.java:75)
+```
+
+Mit 1.1.5 lief derselbe Code noch, und mein Request-Log zeigt, warum die Änderung sinnvoll ist. Ohne ID landen alle Aufrufe in derselben Konversation `default`. Der zweite Request meines Tests enthielt die Frage und Antwort des ersten, obwohl beide nichts miteinander zu tun hatten. In einer Anwendung mit mehreren Nutzern sieht das Modell so den Verlauf fremder Gespräche.
+
+Die Lösung ist eine ID pro Gespräch, etwa aus der Session oder dem angemeldeten Nutzer:
+
+```java
+chatClient.prompt()
+        .user(question)
+        .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
+        .call()
+        .content();
+```
+
+Auf Deprecation-Warnungen solltest du dich in diesem Schritt nicht verlassen. Ich habe das Projekt unter 1.1.8 mit `-Dmaven.compiler.showDeprecation=true` gebaut: keine einzige Warnung, obwohl drei der verwendeten APIs in 2.0 fehlen.
+
+## Schritt 2: Das Verhalten mit Tests festhalten
+
+Bevor du die Versionen änderst, brauchst du Tests, die das heutige Verhalten beschreiben. Ein Test mit einem echten Modell ist dafür ungeeignet: zu teuer, zu langsam und nicht reproduzierbar. Ich ersetze deshalb die OpenAI-API durch einen kleinen HTTP-Server aus dem JDK. Er spielt ein festes Drehbuch ab: Beim ersten Aufruf mit Tools fordert er das Tool `find_order` an, und sobald ein Tool-Ergebnis im Verlauf steht, antwortet er mit Text. Jeden Request speichert er für die Prüfung.
+
+```java
+class MockOpenAi {
+
+    record Request(String path, String body) {
+    }
+
+    private static final Pattern TOOL_RESULT = Pattern.compile("\"role\"\\s*:\\s*\"tool\"");
+
+    private final HttpServer server;
+    private final List<Request> requests = new CopyOnWriteArrayList<>();
+
+    private MockOpenAi(HttpServer server) {
+        this.server = server;
+    }
+
+    static MockOpenAi start() {
+        try {
+            HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+            MockOpenAi mock = new MockOpenAi(server);
+            server.createContext("/", mock::handle);
+            server.start();
+            return mock;
+        }
+        catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
+    }
+
+    String baseUrl() {
+        return "http://127.0.0.1:" + server.getAddress().getPort();
+    }
+
+    List<Request> requests() {
+        return requests;
+    }
+
+    private void handle(HttpExchange exchange) throws IOException {
+        String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+        requests.add(new Request(exchange.getRequestURI().getPath(), body));
+
+        String response;
+        if (TOOL_RESULT.matcher(body).find()) {
+            response = completion("""
+                    {"role":"assistant","content":"Die Bestellung 4711 wurde am 18.11.2026 zugestellt."}""", "stop");
+        }
+        else if (body.contains("\"tools\"")) {
+            response = completion("""
+                    {"role":"assistant","content":null,"tool_calls":[{"id":"call_1","type":"function",\
+                    "function":{"name":"find_order","arguments":"{\\"orderId\\":\\"4711\\"}"}}]}""", "tool_calls");
+        }
+        else {
+            response = completion("{\"role\":\"assistant\",\"content\":\"Hallo!\"}", "stop");
+        }
+
+        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().add("Content-Type", "application/json");
+        exchange.sendResponseHeaders(200, bytes.length);
+        exchange.getResponseBody().write(bytes);
+        exchange.close();
+    }
+
+    private static String completion(String message, String finishReason) {
+        return """
+                {"id":"chatcmpl-1","object":"chat.completion","created":1763900000,"model":"gpt-4.1-mini",\
+                "choices":[{"index":0,"message":%s,"finish_reason":"%s"}],\
+                "usage":{"prompt_tokens":20,"completion_tokens":10,"total_tokens":30}}"""
+            .formatted(message, finishReason);
+    }
+}
+```
+
+Der Test startet die Anwendung und leitet `spring.ai.openai.base-url` auf den Mock um. Das funktioniert unverändert mit 1.x und 2.x, obwohl Spring AI 2.0 intern auf das offizielle `openai-java`-SDK umgestiegen ist. [[5]][q5]
+
+```java
+@SpringBootTest(properties = "spring.ai.openai.api-key=test")
+class SupportAssistantTest {
+
+    static final MockOpenAi openAi = MockOpenAi.start();
+
+    @DynamicPropertySource
+    static void openAiUrl(DynamicPropertyRegistry registry) {
+        registry.add("spring.ai.openai.base-url", openAi::baseUrl);
+    }
+
+    @Autowired
+    SupportAssistant assistant;
+
+    @Autowired
+    TicketSummarizer summarizer;
+
+    @BeforeEach
+    void reset() {
+        openAi.requests().clear();
+    }
+
+    @Test
+    void chatClientExecutesTools() {
+        String answer = assistant.answer("kunde-1", "Wo ist meine Bestellung 4711?");
+
+        assertThat(answer).contains("zugestellt");
+        assertThat(openAi.requests()).hasSize(2);
+    }
+
+    @Test
+    void summarizerExecutesTools() {
+        String summary = summarizer.summarize("Kunde fragt nach Bestellung 4711");
+
+        assertThat(summary).contains("zugestellt");
+        assertThat(openAi.requests()).hasSize(2);
+    }
+
+    @Test
+    void sendsTemperature() {
+        summarizer.summarize("Kunde fragt nach Bestellung 4711");
+
+        assertThat(openAi.requests().getFirst().body()).contains("\"temperature\":0.7");
+    }
+}
+```
+
+Die Tests prüfen nicht nur das Ergebnis, sondern auch die Requests: Wie oft wurde das Modell gefragt, und was stand drin? Genau dort zeigen sich die Änderungen, die der Compiler nicht findet. Mit 1.1.8 sind alle Tests grün.
+
+## Schritt 3: Spring Boot 4 und Spring AI 2.x gemeinsam anheben
+
+Die naheliegende Idee wäre, erst Spring Boot 4 einzuspielen und Spring AI danach. Das funktioniert nicht. Spring AI 2.0 ist für Spring Boot 4 und Spring Framework 7 gebaut. [[3]][q3] Und Spring AI 1.1.8 läuft nicht mit Spring Boot 4: Bei mir kompilierte das Projekt mit Spring Boot 4.2.0, der Kontext startete aber nicht.
+
+```text
+Caused by: java.lang.NoSuchMethodError: 'void org.springframework.http.HttpHeaders.addAll(org.springframework.util.MultiValueMap)'
+```
+
+Beide Versionen ändern sich also in einem Schritt:
+
+```xml
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.2.0</version>
+    <relativePath/>
+</parent>
+
+<properties>
+    <java.version>21</java.version>
+    <spring-ai.version>2.1.0</spring-ai.version>
+</properties>
+```
+
+Dazu kommen die Änderungen von Spring Boot 4 selbst: Java 17 als Minimum, Jakarta EE 11, modulare Starter und Jackson 3 als Standard. `spring-boot-starter-web` heißt jetzt `spring-boot-starter-webmvc`; der alte Name funktioniert noch, ist aber veraltet. [[7]][q7] Für größere Projekte schlägt der Migrationsleitfaden einen Zwischenschritt mit `spring-boot-starter-classic` vor, der wieder alle Auto-Configurations auf den Klassenpfad bringt. [[7]][q7]
+
+### Was OpenRewrite übernimmt und was nicht
+
+Für Spring Boot gibt es das frei verfügbare OpenRewrite-Rezept `org.openrewrite.java.spring.boot4.UpgradeSpringBoot_4_0`. [[8]][q8] Ich habe es mit `rewrite-spring` 6.37.1 auf den Stand mit 1.1.8 angewendet:
+
+```bash
+mvn -U org.openrewrite.maven:rewrite-maven-plugin:run \
+  -Drewrite.recipeArtifactCoordinates=org.openrewrite.recipe:rewrite-spring:RELEASE \
+  -Drewrite.activeRecipes=org.openrewrite.java.spring.boot4.UpgradeSpringBoot_4_0
+```
+
+Das Rezept hat den Parent auf 4.0.10 gehoben und den Web-Starter umbenannt. Spring AI blieb auf 1.1.8, am Java-Code hat es nichts geändert. Das Ergebnis wäre also die Kombination, die nicht startet. Das Rezept für Spring Boot 4.2 stammt von Moderne und liegt nicht im Paket `org.openrewrite`.
+
+Spring AI selbst liefert nur Rezepte für die MCP-Änderungen aus der Zeit der Meilensteine: neue Pakete der MCP-Annotationen, neue Group-ID der Transporte und die neue Customizer-API. [[5]][q5] Für Tool Calling, Optionen und Chat Memory gibt es kein Rezept. Diese Stellen änderst du von Hand.
+
+## Schritt 4: Compile-Fehler beheben
+
+Nach dem Versionssprung meldet Maven drei Fehler (Ausgabe gekürzt):
+
+```text
+[ERROR] SupportAssistant.java:[25,17] cannot find symbol
+  symbol:   method toolNames(java.lang.String)
+[ERROR] TicketSummarizer.java:[25,88] cannot find symbol
+  symbol:   method copy()
+  location: class org.springframework.ai.openai.OpenAiChatOptions
+[ERROR] TicketSummarizer.java:[26,16] cannot find symbol
+  symbol:   method setToolCallbacks(java.util.List<org.springframework.ai.tool.ToolCallback>)
+```
+
+Rechne damit, dass es nicht bei der ersten Liste bleibt. Der Fehler bei `toolNames` hat den nächsten Fehler in derselben Aufrufkette verdeckt. Er kam erst im zweiten Durchlauf.
+
+### Tools per Name gibt es nicht mehr
+
+In 1.x konnte ein Tool eine `Function`-Bean mit `@Description` sein, auf die der Code per Name verwies:
+
+```java
+@Bean
+@Description("Prüft, ob eine Bestellung erstattet werden kann")
+public Function<RefundRequest, RefundResponse> refundPolicy() {
+    return request -> new RefundResponse(true, "Innerhalb der Rückgabefrist von 30 Tagen");
+}
+
+// im Service
+chatClient.prompt().user(question).toolNames("refundPolicy")
+```
+
+Spring AI 2.0 hat diese Auflösung per Bean-Name entfernt, ebenso `toolNames()`. [[5]][q5] Die direkte Entsprechung ist eine `ToolCallback`-Bean, die du mit `tools(...)` übergibst:
+
+```java
+@Bean
+public ToolCallback refundPolicy() {
+    return FunctionToolCallback
+        .builder("refundPolicy",
+                (RefundRequest request) -> new RefundResponse(true, "Innerhalb der Rückgabefrist von 30 Tagen"))
+        .description("Prüft, ob eine Bestellung erstattet werden kann")
+        .inputType(RefundRequest.class)
+        .build();
+}
+
+// im Service
+chatClient.prompt().user(question).tools(refundPolicy)
+```
+
+Für neuen Code ist eine Methode mit `@Tool` meist lesbarer. Wichtig ist der Gedanke dahinter: Seit 2.0.1 kann ein Aufruf nur noch die Tools ausführen, die du ihm übergeben hast. Vorher fiel Spring AI auf alle `ToolCallback`-Beans der Anwendung zurück, wenn das Modell ein unbekanntes Tool anforderte. [[5]][q5] Das ist sicherer, kann aber Anwendungen brechen, die sich darauf verlassen haben.
+
+### Optionen sind unveränderlich
+
+Optionen kopierst du nicht mehr mit `copy()` und änderst sie mit Settern, sondern baust mit `mutate()` eine neue Instanz. `getDefaultOptions()` heißt jetzt `getOptions()`: [[5]][q5]
+
+```java
+// 1.x
+OpenAiChatOptions options = ((OpenAiChatOptions) chatModel.getDefaultOptions()).copy();
+options.setToolCallbacks(List.of(ToolCallbacks.from(orderTools)));
+
+// 2.x
+OpenAiChatOptions options = ((OpenAiChatOptions) chatModel.getOptions()).mutate()
+    .toolCallbacks(ToolCallbacks.from(orderTools))
+    .build();
+```
+
+Beim `ChatClient` ist es umgekehrt: `options(...)` erwartet jetzt den Builder, nicht das fertige Objekt. Der `ChatClient` führt die gesetzten Felder mit den Standardoptionen des Modells zusammen. [[5]][q5]
+
+```java
+// 1.x
+.options(OpenAiChatOptions.builder().temperature(0.2).build())
+
+// 2.x
+.options(OpenAiChatOptions.builder().temperature(0.2))
+```
+
+Der Compiler meldet das nicht als fehlende Methode, sondern mit einer Typ-Meldung, die man leicht missversteht (gekürzt):
+
+```text
+method options in interface ChatClient.ChatClientRequestSpec cannot be applied to given types;
+  required: B
+  found:    org.springframework.ai.openai.OpenAiChatOptions
+  reason: inference variable B has incompatible bounds
+```
+
+### Weitere Compile-Fehler, die in meinem Beispiel nicht vorkommen
+
+Diese Änderungen nennen die Upgrade Notes für 2.0 zusätzlich. [[5]][q5]
+
+| Spring AI 1.x | Spring AI 2.x |
+|---|---|
+| `FunctionCallback`, `functions(...)`, `defaultFunctions(...)` | `FunctionToolCallback`, `tools(...)`, `defaultTools(...)` |
+| `tools(t -> t.callbacks(...).context(...))` | `tools(...)` und `toolContext(Map)` |
+| `ToolCallAdvisor` | `ToolCallingAdvisor` |
+| `internalToolExecutionEnabled(...)` | entfällt, siehe nächster Abschnitt |
+| `ToolContext.getToolCallHistory()` | entfällt, der Verlauf liegt beim `ToolCallingAdvisor` |
+| `PromptChatMemoryAdvisor` | `MessageChatMemoryAdvisor` |
+| `ChatMemory.DEFAULT_CONVERSATION_ID`, `conversationId(...)` am Advisor-Builder | Conversation-ID bei jedem Aufruf |
+| `.N(1)` in den Options-Buildern | `.n(1)` |
+| `ModelOptionsUtils.toJsonString(...)`, `ModelOptionsUtils.JSON_MAPPER` | `JsonHelper`, `JacksonUtils.getDefaultJsonMapper()` |
+| `org.springaicommunity.mcp.annotation.*` | `org.springframework.ai.mcp.annotation.*` |
+| `McpSyncClientCustomizer` | `McpClientCustomizer<McpClient.SyncSpec>` |
+| `AnthropicApi`, `new AnthropicChatModel(api, options)` | `AnthropicChatModel.builder()` |
+| `BeanOutputConverter.postProcessSchema(...)` | `generateSchema()` überschreiben |
+
+Einige Module sind ganz weggefallen. `spring-ai-azure-openai` und `spring-ai-openai-sdk` gehen im Modul `spring-ai-openai` auf. Azure Cosmos DB, SAP HANA, OCI Generative AI, MiniMax und Spring Cloud Bindings sind nicht mehr Teil von Spring AI. Zu Cosmos DB und OCI verweisen die Upgrade Notes auf externe Module, MiniMax sprichst du über das Anthropic-Modul an. `spring-ai-advisors-vector-store` heißt jetzt `spring-ai-vector-store-advisor`. [[5]][q5]
+
+Nach diesen Korrekturen kompiliert das Projekt, und die Anwendung startet. Zwei meiner drei Tests schlagen trotzdem fehl.
+
+## Schritt 5: Die stillen Änderungen
+
+### Das ChatModel führt keine Tools mehr aus
+
+Der `TicketSummarizer` ruft das `ChatModel` direkt auf und übergibt Tools in den Optionen. In 1.x enthielt jedes `ChatModel` eine eigene Tool-Schleife: Es führte das angeforderte Tool aus, fragte das Modell erneut und gab die fertige Antwort zurück.
+
+In 2.0 ist diese Schleife aus allen `ChatModel`-Implementierungen entfernt. [[5]][q5] Mein Test zeigt, was das bedeutet: Statt der Zusammenfassung kommt ein **leerer String** zurück, und das Modell wurde nur einmal gefragt. Die Tool-Anforderung steckt in der Antwort, niemand führt sie aus, und es gibt keine Exception.
+
+```text
+SupportAssistantTest.summarizerExecutesTools
+Expecting actual:
+  ""
+to contain:
+  "zugestellt"
+```
+
+Die Tool-Schleife läuft jetzt im `ToolCallingAdvisor`, den der `ChatClient` automatisch registriert. Den Hintergrund dazu habe ich im Artikel über [AI Agents mit Java](/blog/ai-agents-mit-java-entwickeln#den-agenten-mit-dem-chatclient-aufbauen) beschrieben. Für fast alle Anwendungen ist der Umstieg auf den `ChatClient` die richtige Lösung, und der Code wird dabei kürzer:
+
+```java
+@Service
+public class TicketSummarizer {
+
+    private final ChatClient chatClient;
+
+    public TicketSummarizer(ChatClient.Builder builder, OrderTools orderTools) {
+        this.chatClient = builder.defaultTools(orderTools).build();
+    }
+
+    public String summarize(String ticketText) {
+        return chatClient.prompt()
+                .user("Fasse dieses Ticket in einem Satz zusammen: " + ticketText)
+                .call()
+                .content();
+    }
+}
+```
+
+Brauchst du das `ChatModel` direkt, etwa in einem eigenen Orchestrator, steuerst du die Schleife selbst mit `ToolCallingManager`. [[5]][q5] Suche im Projekt nach allen Aufrufen von `chatModel.call(` und `chatModel.stream(`, bei denen Tools im Spiel sind. Jeder davon ist betroffen.
+
+Diesen Test habe ich danach als Dokumentation des neuen Verhaltens behalten:
+
+```java
+@Test
+void chatModelNoLongerExecutesTools() {
+    var options = OpenAiChatOptions.builder().toolCallbacks(ToolCallbacks.from(orderTools)).build();
+
+    ChatResponse response = chatModel.call(new Prompt("Wo ist Bestellung 4711?", options));
+
+    assertThat(response.hasToolCalls()).isTrue();
+    assertThat(response.getResult().getOutput().getText()).isEmpty();
+    assertThat(openAi.requests()).hasSize(1);
+}
+```
+
+### Die Standard-Temperatur ist weg
+
+Spring AI 1.x hat für die meisten Modelle eine Temperatur von 0.7 gesetzt, wenn du keine angegeben hast. In 2.0 fällt dieser Wert weg, und der Standard des Anbieters gilt. [[5]][q5] Der erste Request von 1.1.8 enthielt `"temperature":0.7`, der von 2.1.0 enthielt gar keine Temperatur.
+
+Ob das deine Antworten verändert, hängt vom Anbieter und Modell ab. Laut Upgrade Notes liegt der Standard je nach Anbieter bei 1.0, bei 0.7 oder hängt vom Modell ab. [[5]][q5] Wenn du das alte Verhalten willst, setz den Wert ausdrücklich:
+
+```yaml
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        model: gpt-4.1-mini
+        temperature: 0.7
+```
+
+Für Anthropic gilt das ab 2.1 nicht mehr: Dort musst du `temperature`, `top-p` und `top-k` entfernen. Spring AI verwirft gesetzte Werte und loggt eine Warnung. [[5]][q5]
+
+### Weitere Verhaltensänderungen
+
+Diese Punkte kamen in meinem Beispiel nicht vor. Prüfe sie, wenn sie dich betreffen. [[5]][q5]
+
+- **Anthropic `maxTokens`:** Der Standard ist von 500 auf 4096 gestiegen. Antworten, die bisher abgeschnitten wurden, werden länger, und das kostet mehr Tokens. Setz den Wert ausdrücklich, wenn du dich auf die Grenze verlassen hast.
+- **Tool-Limits:** Seit 2.0.1 begrenzt der `DefaultToolCallingManager` die Tool-Aufrufe pro Turn auf 40 pro Tool und 150 insgesamt. Vorher gab es kein Limit.
+- **Token-Verbrauch:** Seit 2.0.1 summiert der `ToolCallingAdvisor` die Usage über alle Modellaufrufe der Tool-Schleife. Metriken und Tests mit exakten Token-Zahlen zeigen dann höhere Werte.
+- **Reihenfolge der Memory-Advisors:** `Advisor.DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER` ist von `HIGHEST_PRECEDENCE + 1000` auf `HIGHEST_PRECEDENCE + 200` gesunken. Die Memory-Advisors liegen damit außerhalb der Tool-Schleife und speichern keine Tool-Aufrufe. Prüfe eigene Advisors, deren Reihenfolge sich an diesem Wert orientiert.
+- **Observability:** Die Spans für Tool-Aufrufe heißen `execute_tool <name>` statt `tool_call <name>`, `gen_ai.operation.name` ist `execute_tool`. Dashboards und Alerts, die auf die alten Namen filtern, bleiben leer.
+- **MCP-Server:** Sie prüfen Tool-Argumente jetzt gegen das JSON-Schema. Seit 2.0.1 werden Checked Exceptions aus `@McpTool`-Methoden nicht mehr als Fehlertext an das Modell gegeben, sondern brechen den Aufruf ab.
+- **MongoDB Chat Memory:** Die Nachrichten kommen jetzt in der richtigen Reihenfolge. Wer sie bisher selbst umgedreht hat, muss das entfernen.
+
+### Properties umstellen
+
+In 2.0 entfällt das Segment `.options` in den Property-Namen, aus `spring.ai.openai.chat.options.model` wird `spring.ai.openai.chat.model`. [[5]][q5] Die alten Namen funktionieren als veraltete Aliase weiter. Am schnellsten findest du sie mit dem Properties Migrator von Spring Boot. [[7]][q7]
+
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-properties-migrator</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+Er kennt auch die Spring-AI-Properties. Mit meiner alten Konfiguration meldete er beim Start:
+
+```text
+The use of configuration keys that have been renamed was found in the environment:
+
+Property source 'Config resource 'class path resource [application.yaml]' via location 'optional:classpath:/'':
+	Key: spring.ai.openai.chat.options.model
+		Line: 7
+		Replacement: spring.ai.openai.chat.model
+	Key: spring.ai.openai.chat.options.temperature
+		Line: 8
+		Replacement: spring.ai.openai.chat.temperature
+```
+
+Entferne den Migrator wieder, sobald die Konfiguration umgestellt ist. Er ist nur für die Übergangszeit gedacht. [[7]][q7]
+
+Mit dem `ChatClient` im `TicketSummarizer` und der ausdrücklich gesetzten Temperatur waren alle Tests wieder grün, mit Spring AI 2.1.0 genauso wie mit 2.0.3.
+
+## Chat Memory: JDBC-Schema und Session Memory
+
+Nutzt du `JdbcChatMemoryRepository`, braucht die Tabelle `SPRING_AI_CHAT_MEMORY` in 2.0 eine neue Spalte `sequence_id`, nach der die Nachrichten sortiert werden. Ohne sie funktioniert das Repository nicht. Für PostgreSQL geben die Upgrade Notes dieses Skript an; ich habe es nicht ausgeführt: [[5]][q5]
+
+```sql
+ALTER TABLE SPRING_AI_CHAT_MEMORY ADD COLUMN sequence_id BIGINT;
+
+WITH ordered AS (
+    SELECT ctid, ROW_NUMBER() OVER (PARTITION BY conversation_id ORDER BY "timestamp") - 1 AS seq
+    FROM SPRING_AI_CHAT_MEMORY
+)
+UPDATE SPRING_AI_CHAT_MEMORY t
+SET sequence_id = o.seq
+FROM ordered o
+WHERE t.ctid = o.ctid;
+
+ALTER TABLE SPRING_AI_CHAT_MEMORY ALTER COLUMN sequence_id SET NOT NULL;
+
+CREATE INDEX SPRING_AI_CHAT_MEMORY_CONVERSATION_ID_SEQUENCE_ID_IDX
+ON SPRING_AI_CHAT_MEMORY(conversation_id, sequence_id);
+```
+
+Nimm das Skript in deine Datenbank-Migrationen auf, etwa mit Flyway oder Liquibase. Weil Chat Memory meist nur den jüngsten Verlauf enthält, ist auch Löschen und Neuanlegen der Tabelle eine Option. [[5]][q5]
+
+In Spring AI 2.1 ist `ChatMemory` samt `MessageChatMemoryAdvisor` und den Repositories veraltet und wird in 3.0 entfernt. Der Nachfolger heißt **Session Memory**: Er speichert das Gespräch als Ereignisprotokoll, behält Tool-Aufrufe und kann lange Verläufe zusammenfassen, ohne einen Turn zu zerreißen. [[4]][q4][[10]][q10] Bis 3.0 funktioniert der alte Code weiter. Ich würde den Wechsel deshalb als eigenen Schritt nach der Migration machen, nicht im selben Commit.
+
+Im Beispiel war der Umstieg klein. Mit dem Modul `spring-ai-session-advisor` und einem `SessionService` wird aus dem Memory-Advisor:
+
+```java
+this.chatClient = builder
+        .defaultSystem("Du bist der Support-Assistent eines Onlineshops.")
+        .defaultTools(orderTools)
+        .defaultAdvisors(SessionAdvisors.builder(sessionService).build())
+        .build();
+
+// pro Aufruf
+chatClient.prompt()
+        .user(question)
+        .advisors(SessionAdvisors.session(conversationId))
+        .call()
+        .content();
+```
+
+Im Test habe ich den `SessionService` mit `InMemorySessionRepository` gebaut, für den Betrieb gibt es `spring-ai-starter-model-session-jdbc`. [[10]][q10] Beachte: Session Memory nutzt eigene Tabellen und liest die bisherigen Gespräche aus `SPRING_AI_CHAT_MEMORY` nicht. [[9]][q9] Für Cassandra, Neo4j, MongoDB und Redis gibt es noch keine Session-Variante; sie ist laut Doku bis 3.0 geplant. [[9]][q9]
+
+## MCP und eigener JSON-Code
+
+Wenn deine Anwendung MCP-Server oder -Clients nutzt, kommen weitere Änderungen dazu: Die Annotationen liegen jetzt in Spring AI unter `org.springframework.ai.mcp.annotation`, die Transporte haben die Group-ID `org.springframework.ai`, und Spring AI 2.0 verwendet das MCP Java SDK 2.0. [[5]][q5] Für diese Punkte gibt es das erwähnte OpenRewrite-Rezept. Wie ein MCP-Server mit Spring AI 2.1 aussieht, zeige ich im Tutorial [MCP-Server mit Java und Spring Boot](/blog/mcp-server-java-spring-boot).
+
+Bei eigenem JSON-Code betrifft dich vor allem Jackson 3. Spring Boot 4 nutzt es als Standard, die Pakete heißen `tools.jackson` statt `com.fasterxml.jackson`, nur die Annotationen bleiben im alten Paket. Statt eines `ObjectMapper` konfiguriert Spring Boot einen `JsonMapper`. Wer mehr Zeit braucht, kann übergangsweise mit `spring.jackson.use-jackson2-defaults` oder dem veralteten Modul `spring-boot-jackson2` arbeiten. [[7]][q7] Spring AI nutzt intern ebenfalls Jackson 3 und bietet mit `JsonHelper` eine eigene Hilfsklasse. [[3]][q3][[5]][q5]
+
+## Checkliste für die Migration
+
+- Auf Spring AI 1.1.8 (oder 1.0.9) und Spring Boot 3.5.16 aktualisieren
+- Conversation-ID bei jedem Aufruf mit Chat-Memory-Advisor setzen
+- Tests schreiben, die Antworten und Requests prüfen, mit einem nachgebauten Modell-Endpunkt
+- Spring Boot und Spring AI gemeinsam anheben, Ziel 4.2 und 2.1
+- `toolNames`, `FunctionCallback` und `Function`-Beans durch `ToolCallback` oder `@Tool` ersetzen
+- Options-Builder an `ChatClient.options(...)` übergeben, `copy()` durch `mutate()` ersetzen
+- Jeden direkten `ChatModel`-Aufruf mit Tools auf `ChatClient` umstellen
+- Temperatur und bei Anthropic `maxTokens` ausdrücklich setzen
+- Properties ohne `.options` schreiben, mit dem Properties Migrator prüfen
+- JDBC-Schema der Chat Memory migrieren
+- Dashboards und Alerts auf die neuen Span-Namen umstellen
+- Session Memory als eigenen Schritt planen
+
+## Fazit
+
+Die Migration auf Spring AI 2.x ist in einem kleinen Projekt an einem Nachmittag erledigt. Den größten Teil der Arbeit macht der Compiler sichtbar, und die Korrekturen sind mechanisch. Unterschätzen würde ich die Änderungen, die der Compiler nicht meldet. In meinem Beispiel hat ein Service nach dem Upgrade still leere Antworten geliefert, und alle Requests liefen mit einer anderen Temperatur. Beides hätte kein Fehler im Log verraten.
+
+Deshalb ist der wichtigste Schritt der zweite: Tests, die vor der Migration festhalten, wie oft das Modell gefragt wird, welche Tools laufen und welche Parameter im Request stehen. Mit einem nachgebauten Endpunkt kosten diese Tests nichts und laufen in jeder Pipeline. Wenn du noch keine Tests für deine Spring-AI-Anwendung hast, ist die Migration ein guter Anlass, sie zu schreiben.
+
+## Häufige Fragen zur Migration auf Spring AI 2.0
+
+### Kann ich Spring AI 2.0 mit Spring Boot 3 verwenden?
+
+Nein. Spring AI 2.0 ist für Spring Boot 4.0 und 4.1 und Spring Framework 7 gebaut, Spring AI 2.1 für Spring Boot 4.2. Du hebst deshalb beides gemeinsam an.
+
+### Läuft Spring AI 1.x mit Spring Boot 4?
+
+Nein. In meinem Test kompilierte eine Anwendung mit Spring AI 1.1.8 und Spring Boot 4.2.0 zwar, der Kontext brach beim Start aber mit einem `NoSuchMethodError` aus Spring Framework 7 ab.
+
+### Wird Spring AI 1.x noch unterstützt?
+
+Der Open-Source-Support für Spring AI 1.0.x und 1.1.x endete am 30. Juni 2026, die letzten Versionen sind 1.0.9 und 1.1.8. Kommerziellen Support bietet Broadcom für 1.1.x bis 2032 und für 1.0.x bis Juni 2027 an.
+
+### Gibt es ein OpenRewrite-Rezept für Spring AI 2.0?
+
+Nur für die MCP-Änderungen, also neue Pakete, Group-IDs und Customizer. Für Spring Boot 4.0 gibt es ein freies Rezept, das Spring AI aber nicht anhebt. Tool Calling, Optionen und Chat Memory stellst du von Hand um.
+
+### Sollte ich auf Spring AI 2.0 oder 2.1 migrieren?
+
+Auf 2.1 mit Spring Boot 4.2, wenn deine übrigen Abhängigkeiten Spring Boot 4.2 unterstützen. Die Linie hat den längsten Support. Sonst auf das neueste 2.0.x-Release mit Spring Boot 4.1.
+
+### Muss ich ChatMemory sofort durch Session Memory ersetzen?
+
+Nein. `ChatMemory` ist in 2.1 veraltet, funktioniert aber bis zur Entfernung in 3.0. Plane den Wechsel als eigenen Schritt nach dem Upgrade. Bestehende Gespräche aus der Chat-Memory-Tabelle übernimmt Session Memory nicht.
+
+## Quellen
+
+1. [Spring: Spring AI, Support-Zeiträume][q1]
+2. [Spring: Spring Boot, Support-Zeiträume][q2]
+3. [Spring Blog: Spring AI 2.0.0 GA Available Now][q3]
+4. [Spring Blog: Spring AI 2.1.0 GA Available Now][q4]
+5. [Spring AI: Upgrade Notes][q5]
+6. [Spring AI: Release Notes 1.1.6][q6]
+7. [Spring Boot 4.0 Migration Guide][q7]
+8. [OpenRewrite: Migrate to Spring Boot 4.0 (Community Edition)][q8]
+9. [Spring AI: Chat Memory, Migrating to Session Memory][q9]
+10. [Spring AI: Session Memory][q10]
+11. [Spring AI: Migrating the Anthropic Module to the Official Java SDK][q11]
+
+[q1]: https://spring.io/projects/spring-ai#support "Spring: Spring AI, Support-Zeiträume"
+[q2]: https://spring.io/projects/spring-boot#support "Spring: Spring Boot, Support-Zeiträume"
+[q3]: https://spring.io/blog/2026/06/12/spring-ai-2-0-0-GA-available-now "Spring Blog: Spring AI 2.0.0 GA Available Now"
+[q4]: https://spring.io/blog/2026/11/20/spring-ai-2-1-0-GA-available-now "Spring Blog: Spring AI 2.1.0 GA Available Now"
+[q5]: https://docs.spring.io/spring-ai/reference/upgrade-notes.html "Spring AI: Upgrade Notes"
+[q6]: https://github.com/spring-projects/spring-ai/releases/tag/v1.1.6 "Spring AI: Release Notes 1.1.6"
+[q7]: https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide "Spring Boot 4.0 Migration Guide"
+[q8]: https://codegenomeproject.org/recipes/org.openrewrite.java.spring.boot4.UpgradeSpringBoot_4_0 "OpenRewrite: Migrate to Spring Boot 4.0 (Community Edition)"
+[q9]: https://docs.spring.io/spring-ai/reference/api/chat-memory.html "Spring AI: Chat Memory"
+[q10]: https://docs.spring.io/spring-ai/reference/api/session.html "Spring AI: Session Memory"
+[q11]: https://docs.spring.io/spring-ai/reference/api/chat/anthropic-migration.html "Spring AI: Migrating the Anthropic Module to the Official Java SDK"

@@ -183,6 +183,8 @@ public class SupportAgent {
 
 Die Schleife schreibst du nicht selbst. In Spring AI 2.0 registriert der `ChatClient` automatisch einen `ToolCallingAdvisor`. Er schickt die Anfrage samt Tool-Definitionen an das Modell, führt angeforderte Tools aus, hängt die Ergebnisse an den Verlauf und fragt das Modell erneut, bis eine Antwort ohne Tool-Aufruf kommt. [[2]][q2][[4]][q4]
 
+Wenn du von Spring AI 1.x kommst: Ein direkt aufgerufenes `ChatModel` führt Tools seit 2.0 nicht mehr selbst aus. Was sich beim Umstieg sonst ändert, beschreibe ich in der [Migration auf Spring AI 2.0](/blog/spring-ai-2-migration).
+
 Die Tools übergebe ich bewusst pro Aufruf mit `.tools(...)` und nicht als `defaultTools(...)`. Die Spring-AI-Dokumentation empfiehlt, riskante oder verändernde Tools nicht als Standard für jede Anfrage zu registrieren. [[2]][q2]
 
 Für die Beispielanfrage könnte der Ablauf so aussehen:
