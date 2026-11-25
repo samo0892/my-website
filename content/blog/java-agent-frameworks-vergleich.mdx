@@ -1,0 +1,578 @@
+---
+title: "Java Agent Frameworks im Vergleich: Spring AI, LangChain4j, Embabel, Koog und Google ADK"
+metaTitle: "Java Agent Frameworks im Vergleich: 5 Frameworks getestet"
+description: "Spring AI, LangChain4j, Embabel, Koog oder Google ADK? Derselbe Java-Agent in allen fünf Frameworks gebaut und getestet: Code, Unterschiede, Empfehlung."
+shortAnswer: "Für einen einzelnen Agenten in einer Spring-Boot-Anwendung reicht Spring AI: Ein ChatClient mit Tools ist bereits der Agent. LangChain4j agentic lohnt sich für mehrere zusammenarbeitende Agenten mit oder ohne Spring, ist aber noch als experimentell markiert. Embabel plant die Schritte über Java-Typen und passt zu Prozessen mit vielen festen Schritten. Koog bringt Strategie-Graphen mit Checkpoints und Tracing mit, Google ADK ist die naheliegende Wahl für Gemini und Google Cloud. Im Test brauchten alle fünf zwei Modellaufrufe. Die Unterschiede liegen bei der strukturierten Ausgabe, beim Gewicht der Abhängigkeiten und bei den Stolpersteinen."
+date: "2026-11-25"
+ogImage: "/images/og/java-agent-frameworks-vergleich.png"
+testedWith:
+  - "Spring AI 2.1.0 mit Spring Boot 4.2.0"
+  - "LangChain4j 1.24.0, langchain4j-agentic 1.24.0-beta34"
+  - "Embabel 1.5.4 mit Spring Boot 4.1.1"
+  - "Koog 1.3.0"
+  - "Google ADK for Java 1.15.0"
+  - "Java 21"
+tags: ["Java", "Spring AI", "LangChain4j", "KI"]
+keywords:
+  - "Java Agent Framework"
+  - "AI Agent Framework Java"
+  - "Java Agent Frameworks Vergleich"
+  - "Embabel"
+  - "Koog Java"
+  - "Google ADK Java"
+  - "LangChain4j Agentic"
+  - "Spring AI Agents"
+service: "service-as-software"
+serviceText: "Du willst einen Prozess mit einem KI-Agenten automatisieren und bist unsicher, welches Framework zu deinem Stack passt? Ich prüfe mit dir die Anforderungen, baue einen Prototyp mit dem passenden Framework und bringe ihn mit Tests und menschlicher Freigabe in den Betrieb."
+---
+
+Lange hieß die Wahl für AI Agents in Java: Spring AI oder LangChain4j. 2026 haben drei weitere Frameworks eine Version 1.0 erreicht. **Embabel** kommt vom Spring-Gründer Rod Johnson, **Koog** von JetBrains und das **Agent Development Kit (ADK)** von Google. Alle versprechen, Agenten in Java einfacher zu machen. Sie verfolgen dabei sehr unterschiedliche Ideen.
+
+Wie ein Agent grundsätzlich funktioniert, habe ich im Artikel [AI Agents mit Java entwickeln](/blog/ai-agents-mit-java-entwickeln) erklärt. Hier geht es um die Frage danach: Welches Framework passt zu welchem Projekt? Dafür habe ich dieselbe Aufgabe in allen fünf Frameworks umgesetzt und gegen einen nachgebauten OpenAI-Endpunkt getestet. So sieht man nicht nur den Code, sondern auch, was jedes Framework tatsächlich an das Modell schickt.
+
+> **Stand: 25. November 2026.** Getestet habe ich Spring AI 2.1.0 mit Spring Boot 4.2.0, LangChain4j 1.24.0 mit `langchain4j-agentic` 1.24.0-beta34, Embabel 1.5.4 mit Spring Boot 4.1.1, Koog 1.3.0 und Google ADK for Java 1.15.0, jeweils mit Java 21. Alle Beispiele laufen gegen einen nachgebauten OpenAI-Endpunkt, nicht gegen ein echtes Modell. Die Snippets sind auf das Wesentliche gekürzt. Was ich nicht selbst getestet habe, ist mit Quellen belegt.
+
+## Die fünf Frameworks auf einen Blick
+
+| | Spring AI | LangChain4j agentic | Embabel | Koog | Google ADK |
+|---|---|---|---|---|---|
+| Hersteller | Spring-Team (Broadcom) | Open-Source-Community | Embabel (Rod Johnson) | JetBrains | Google |
+| Version | 2.1.0 | 1.24.0-beta34 | 1.5.4 | 1.3.0 | 1.15.0 |
+| Status | GA | experimentell | GA seit Juli 2026 | GA seit Mai 2026 | GA seit März 2026 |
+| Geschrieben in | Java | Java | Kotlin | Kotlin | Java |
+| Spring Boot | praktisch Pflicht | nicht nötig | Pflicht | nicht nötig | nicht nötig |
+| Wer bestimmt den nächsten Schritt? | das Modell im Tool-Loop, Workflows im eigenen Code | Workflows deklarativ oder ein Supervisor-Modell | ein GOAP-Planer anhand der Java-Typen | ein Strategie-Graph aus Nodes und Kanten | Workflow-Agenten, ein Workflow-Graph oder das Modell |
+| Jars im Runtime-Classpath | 114 | 15 | 127 | 140 | 214 |
+
+Die Jar-Zahlen stammen aus meinen Testprojekten (`mvn dependency:build-classpath` mit Scope `runtime`) und sind nur ein grobes Maß für das Gewicht. Bei Spring AI und Embabel steckt Spring Boot mit drin, bei ADK zusätzlich die LangChain4j-Brücke für OpenAI. Die Status-Angaben stammen von Maven Central und aus den Ankündigungen. [[5]][q5][[8]][q8][[11]][q11][[16]][q16]
+
+## Das Testszenario: Ein Retouren-Agent
+
+Ein Kunde schreibt: „Hallo, ich möchte meine Bestellung A-1001 zurückgeben. Das Headset rauscht ständig.“ Der Agent lädt die Bestellung über ein Tool und entscheidet, ob die Rückgabe möglich ist. Das Ergebnis ist ein Java-Record, kein Fließtext.
+
+Wichtig ist mir dabei eine Regel, die für jeden produktiven Agenten gilt: Die Frist rechnet der Java-Code aus, nicht das Modell. Das Tool liefert dem Modell fertige Fakten, das Modell formuliert nur die Entscheidung.
+
+```java
+public record Bestellung(String nummer, String artikel, LocalDate lieferdatum,
+                         LocalDate rueckgabeBis, boolean fristOffen) {}
+
+public record Entscheidung(boolean rueckgabeMoeglich, String begruendung) {}
+
+public class BestellService {
+
+    private final Clock uhr;
+
+    public BestellService(Clock uhr) {
+        this.uhr = uhr;
+    }
+
+    public Bestellung laden(String nummer) {
+        LocalDate geliefert = LocalDate.of(2026, 11, 10); // im Beispiel fest, sonst aus der Datenbank
+        LocalDate frist = geliefert.plusDays(30);
+        return new Bestellung(nummer, "Bluetooth-Headset", geliefert, frist,
+                !LocalDate.now(uhr).isAfter(frist));
+    }
+}
+```
+
+Getestet habe ich jedes Framework gegen einen kleinen OpenAI-kompatiblen Server aus dem JDK-`HttpServer`, ohne JSON-Bibliothek, damit er neben Jackson 2 und Jackson 3 läuft. Er antwortet auf die erste Anfrage mit einem Tool-Aufruf und auf die zweite, die das Tool-Ergebnis enthält, mit der fertigen Entscheidung. Für Embabel und Koog habe ich die Antworten angepasst, weil die beiden anders fragen; dazu unten mehr. Jede Anfrage zeichnet der Server auf. Die Idee habe ich bei der [Migration auf Spring AI 2.0](/blog/spring-ai-2-migration) ausführlicher beschrieben.
+
+```java
+FakeOpenAi fake = FakeOpenAi.start(body -> FakeOpenAi.hasToolResult(body)
+        ? Reply.text("{\"rueckgabeMoeglich\":true,\"begruendung\":\"Frist läuft bis 10.12.2026.\"}")
+        : Reply.toolCall("bestellungLaden", "{\"bestellnummer\":\"A-1001\"}"));
+```
+
+Jeder Test prüft dasselbe: Das Tool läuft genau einmal mit `A-1001`, das Ergebnis ist `Entscheidung(true, …)`, und das Framework schickt nicht mehr Anfragen als nötig. Die mitgeschnittenen Request-Bodies zeigen, was das Framework zusätzlich in den Prompt schreibt.
+
+## Spring AI 2.1: Der Agent ist ein ChatClient
+
+Spring AI hat kein eigenes Agenten-Modul. Ein Agent ist ein `ChatClient` mit Tools. Die Tool-Schleife läuft seit Version 2.0 im `ToolCallingAdvisor` der Advisor-Kette. Tools sind Methoden einer Spring-Bean:
+
+```java
+@Component
+public class BestellTools {
+
+    private final BestellService service;
+
+    public BestellTools(BestellService service) {
+        this.service = service;
+    }
+
+    @Tool(description = "Lädt eine Bestellung mit Lieferdatum und Rückgabefrist")
+    public Bestellung bestellungLaden(@ToolParam(description = "Bestellnummer, z. B. A-1001") String bestellnummer) {
+        return service.laden(bestellnummer);
+    }
+}
+```
+
+```java
+@Service
+public class RetourenAgent {
+
+    private final ChatClient chatClient;
+
+    public RetourenAgent(ChatClient.Builder builder, BestellTools tools) {
+        this.chatClient = builder
+                .defaultSystem("""
+                        Du prüfst Rückgabewünsche von Kunden. Lade die Bestellung mit dem Tool
+                        bestellungLaden. Entscheide nur anhand der Daten aus dem Tool.""")
+                .defaultTools(tools)
+                .build();
+    }
+
+    public Entscheidung pruefe(String kundennachricht) {
+        return chatClient.prompt()
+                .user(kundennachricht)
+                .call()
+                .entity(Entscheidung.class);
+    }
+}
+```
+
+**Was der Test zeigt:** zwei Anfragen, die erste mit dem Tool-Schema, die zweite mit dem Tool-Ergebnis. Interessant ist `entity()`. Standardmäßig hängt Spring AI an die Nachricht des Nutzers englische Formatanweisungen und das JSON-Schema des Records an („Your response should be in JSON format …“). Das funktioniert mit jedem Modell, ist aber nur eine Bitte an das Modell. Mit einer Zeile schickt Spring AI stattdessen ein natives JSON-Schema mit `strict: true`, das der Anbieter erzwingt, auch zusammen mit Tools: [[2]][q2]
+
+```java
+chatClient.prompt()
+        .advisors(AdvisorParams.ENABLE_NATIVE_STRUCTURED_OUTPUT)
+        .user(kundennachricht)
+        .call()
+        .entity(Entscheidung.class);
+```
+
+**Orchestrierung:** Feste Abläufe aus mehreren Schritten schreibst du in Spring AI als normalen Java-Code, Muster wie Chain oder Routing zeigt die Dokumentation als Beispiele. Version 2.1 hat für Agenten nachgelegt: Tool-Aufrufe können auf die Freigabe durch einen Menschen warten, die Zahl der Tool-Aufrufe pro Turn ist begrenzt, und eine Tool-Suche wählt bei vielen Tools die passenden aus. Die neue Session API ersetzt `ChatMemory`. [[1]][q1]
+
+Ein eigenes Projekt für das Zusammensetzen mehrerer Agenten kündigt das Spring-Team für Anfang Dezember 2026 an: **Spring AI Agent**, zunächst experimentell und auf Basis von Spring AI 2.1, später Teil von Spring AI 3.0. [[1]][q1]
+
+## LangChain4j agentic: Fertige Muster für mehrere Agenten
+
+LangChain4j bringt mit `langchain4j-agentic` ein eigenes Modul für Agenten mit. Ein Agent ist ein Interface mit `@Agent`, das Framework erzeugt die Implementierung. Spring braucht man nicht. Das Tool ist eine normale Klasse:
+
+```java
+public class BestellTools {
+
+    private final BestellService service;
+
+    public BestellTools(BestellService service) {
+        this.service = service;
+    }
+
+    @Tool("Lädt eine Bestellung mit Lieferdatum und Rückgabefrist")
+    public Bestellung bestellungLaden(@P("Bestellnummer, z. B. A-1001") String bestellnummer) {
+        return service.laden(bestellnummer);
+    }
+}
+```
+
+```java
+public interface RetourenAgent {
+
+    @SystemMessage("""
+            Du prüfst Rückgabewünsche von Kunden. Lade die Bestellung mit dem Tool bestellungLaden.
+            Entscheide nur anhand der Daten aus dem Tool.""")
+    @UserMessage("{{kundennachricht}}")
+    @Agent(outputKey = "entscheidung", description = "Prüft einen Rückgabewunsch anhand der Bestelldaten")
+    Entscheidung pruefe(@V("kundennachricht") String kundennachricht);
+}
+
+ChatModel modell = OpenAiChatModel.builder()
+        .baseUrl(baseUrl)
+        .apiKey(apiKey)
+        .modelName("gpt-5-mini")
+        .build();
+
+RetourenAgent agent = AgenticServices.agentBuilder(RetourenAgent.class)
+        .chatModel(modell)
+        .tools(new BestellTools(service))
+        .build();
+
+Entscheidung entscheidung = agent.pruefe(kundennachricht);
+```
+
+**Was der Test zeigt:** zwei Anfragen, der System-Prompt geht unverändert durch. Die strukturierte Ausgabe läuft auch hier standardmäßig über den Prompt. LangChain4j hängt an die Nachricht des Nutzers eine Formatbeschreibung an („You must answer strictly in the following JSON format …“), ein echtes JSON-Schema schickt es erst, wenn du es am Modell einschaltest: [[4]][q4]
+
+```java
+OpenAiChatModel.builder()
+        // ...
+        .supportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA)
+        .strictJsonSchema(true)
+        .build();
+```
+
+Zwei weitere Dinge sind mir aufgefallen:
+
+- **Ein einzelner Agent ist eigentlich ein AI Service.** Ruft man ihn direkt auf, loggt LangChain4j eine Warnung und empfiehlt `AiServices`. Mit `AiServices.builder(...)` und demselben Interface ohne `@Agent` waren die Request-Bodies im Test byte-identisch. Das Agenten-Modul lohnt sich also erst, wenn mehrere Agenten zusammenarbeiten.
+- **Ohne den Compiler-Schalter `-parameters` geht das Tool-Argument verloren.** Das Tool-Schema heißt dann `arg0`, das vom Modell gesendete `bestellnummer` wird ignoriert, und das Tool läuft mit `null`. Es gibt keine Fehlermeldung, nur ein falsches Ergebnis. Die Dokumentation weist darauf hin. [[18]][q18]
+
+**Orchestrierung:** Hier liegt die Stärke von LangChain4j. Agenten lassen sich deklarativ als Sequenz, Schleife, parallel oder bedingt kombinieren, die Daten fließen über den `AgenticScope`. Alternativ entscheidet ein Supervisor-Modell, welcher Agent als Nächstes läuft. Im Test brauchte der Supervisor mit zwei Agenten vier Anfragen statt drei, weil das Planer-Modell am Anfang und am Ende gefragt wird. Wie Sequenz und Supervisor im Code aussehen, zeige ich im [Artikel über AI Agents](/blog/ai-agents-mit-java-entwickeln#workflows-und-supervisor-mit-langchain4j-agentic). In den letzten Versionen sind weitere Planungsmuster dazugekommen, etwa GOAP, BDI und ein Decision Scheduler. Sie liegen im eigenen Artefakt `langchain4j-agentic-patterns`. [[3]][q3][[5]][q5]
+
+**Wie stabil ist die API?** Das Modul ist seit August 2025 als Beta markiert, die Dokumentation nennt es ausdrücklich experimentell. Von 1.18 (Juli 2026) bis 1.24 (November 2026) erschienen sieben Minor-Releases. Mein Testprojekt kompiliert trotzdem gegen 1.18 und besteht dort alle Tests. Geändert werden musste nur eine Hilfsklasse für Tool-Fehler, die es in 1.18 noch nicht gab. Die Kern-API mit `agentBuilder`, `sequenceBuilder` und `supervisorBuilder` war in dieser Zeit also stabil. Bewegung gibt es im Verhalten: In 1.24 laufen asynchrone Agenten, deren Ergebnis niemand liest, jetzt ohne Warten weiter, und `evictAgenticScope` löscht auch die Chat-Memories der Agenten. [[5]][q5]
+
+## Embabel: Der Planer entscheidet über die Typen
+
+Embabel ist das ungewöhnlichste Framework im Vergleich. Statt das Modell in einer Schleife entscheiden zu lassen, beschreibst du **Actions** mit Java-Typen. Die Parametertypen einer Action sind ihre Vorbedingungen, der Rückgabetyp ist ihr Ergebnis. Ein Planer berechnet daraus per GOAP (Goal-Oriented Action Planning) den Weg zum Ziel und plant nach jeder Action neu. Das Modell kommt nur dort zum Einsatz, wo eine Action es ausdrücklich aufruft. [[6]][q6]
+
+Für die Retoure heißt das: Die Bestellnummer liest das Modell aus der Nachricht, die Bestellung lädt reiner Java-Code, die Entscheidung formuliert wieder das Modell.
+
+```java
+public record Kundenanfrage(String bestellnummer, String grund) {}
+
+@Agent(description = "Prüft Rückgabewünsche von Kunden")
+public class RetourenAgent {
+
+    private final BestellService bestellService;
+
+    public RetourenAgent(BestellService bestellService) {
+        this.bestellService = bestellService;
+    }
+
+    @Action(description = "Bestellnummer und Rückgabegrund aus der Kundennachricht lesen")
+    public Kundenanfrage anfrageVerstehen(UserInput nachricht, Ai ai) {
+        return ai.withDefaultLlm().createObject("""
+                Lies aus der Kundennachricht die Bestellnummer und den Rückgabegrund.
+                Kundennachricht: %s""".formatted(nachricht.getContent()), Kundenanfrage.class);
+    }
+
+    @Action(description = "Bestellung aus dem Bestellsystem laden")
+    public Bestellung bestellungLaden(Kundenanfrage anfrage) {
+        return bestellService.laden(anfrage.bestellnummer()); // reiner Java-Code, kein LLM
+    }
+
+    @AchievesGoal(description = "Über den Rückgabewunsch ist entschieden")
+    @Action
+    public Entscheidung entscheiden(Kundenanfrage anfrage, Bestellung bestellung, Ai ai) {
+        return ai.withDefaultLlm()
+                .withSystemPrompt("Du prüfst Rückgabewünsche. Entscheide nur anhand der Bestelldaten.")
+                .createObject("""
+                        Rückgabegrund: %s
+                        Bestellung: %s""".formatted(anfrage.grund(), bestellung), Entscheidung.class);
+    }
+}
+```
+
+Aufgerufen wird der Agent über den gewünschten Ergebnistyp, einen Namen braucht er nicht:
+
+```java
+Entscheidung entscheidung = AgentInvocation.builder(agentPlatform)
+        .build(Entscheidung.class)
+        .invoke(new UserInput(kundennachricht));
+```
+
+Den Plan schreibt Embabel ins Log:
+
+```text
+formulated plan:
+    demo.retoure.RetourenAgent.anfrageVerstehen ->
+      demo.retoure.RetourenAgent.bestellungLaden ->
+        demo.retoure.RetourenAgent.entscheiden
+```
+
+**Was der Test zeigt:** zwei Anfragen, eine für das Lesen der Anfrage und eine für die Entscheidung. Das Modell ruft dabei kein Tool auf, das Laden der Bestellung kann es weder auslassen noch mit einer falschen Nummer aufrufen. Spannend wird es, wenn die Anfrage schon strukturiert vorliegt, etwa aus einem Webformular. Startet man den Agenten mit `new Kundenanfrage("A-1001", "...")`, plant Embabel nur noch `bestellungLaden -> entscheiden` und braucht eine einzige Anfrage. Derselbe Agent passt sich also dem Startzustand an, ohne dass du eine Zeile änderst.
+
+Tools im klassischen Sinn kann Embabel auch: Eine Methode mit `@LlmTool` wird über `withToolObject(...)` an einen LLM-Aufruf gehängt, die Tool-Schleife führt Embabel selbst aus. Diese Variante lief im Test ebenfalls mit zwei Anfragen.
+
+Ein paar Stolpersteine:
+
+- **Für einen eigenen OpenAI-kompatiblen Endpunkt** brauchst du den Starter `embabel-agent-starter-openai-custom`. Die Base-URL muss `/v1` enthalten, und `embabel.models.default-llm` muss auf ein konfiguriertes Modell zeigen, sonst startet der Kontext nicht.
+- **Embabel schreibt das aktuelle Datum in jeden System-Prompt** (`Current date: 2026-11-25`). Es kommt aus der Uhr der JVM, nicht aus einer `Clock`-Bean. Mit einer festen Testuhr kann das Modell also ein anderes Datum sehen als dein Code.
+- **Die strukturierte Ausgabe** läuft über Formatanweisungen und JSON-Schema im System-Prompt. Im Schema für `Entscheidung` war nur das `boolean`-Feld als Pflichtfeld markiert, die Begründung nicht.
+- **Zwei Agenten mit demselben Zieltyp** in einem Kontext: `AgentInvocation` nimmt still den ersten, ohne Fehler.
+- **Der Stack hinkt etwas hinterher:** Embabel 1.5.4 baut auf Spring Boot 4.1 und Spring AI 2.0.1. Wer schon auf Spring AI 2.1 mit Spring Boot 4.2 ist, sollte die Kombination vorher prüfen. [[7]][q7]
+
+## Koog: Strategie-Graphen mit Checkpoints
+
+Koog ist das Agenten-Framework von JetBrains, geschrieben in Kotlin. Seit März 2026 gibt es eine Java-API, seit Version 1.0 im Mai 2026 garantiert JetBrains für die stabilen Module mindestens ein Jahr ohne Breaking Changes. [[8]][q8][[17]][q17] Tools sind annotierte Methoden einer Klasse, die `ToolSet` implementiert:
+
+```java
+@LLMDescription("Werkzeuge rund um Bestellungen")
+public class BestellWerkzeuge implements ToolSet {
+
+    private final BestellService service;
+
+    public BestellWerkzeuge(BestellService service) {
+        this.service = service;
+    }
+
+    @Tool
+    @LLMDescription("Lädt eine Bestellung inklusive Rückgabefrist")
+    public Bestellung bestellungLaden(@LLMDescription("Bestellnummer, z. B. A-1001") String bestellnummer) {
+        return service.laden(bestellnummer);
+    }
+}
+```
+
+```java
+var config = AIAgentConfig.builder()
+        .model(OpenAIModels.Chat.GPT5_4Mini)
+        .prompt(Prompt.builder("retouren").system(ANWEISUNG).build())
+        .maxAgentIterations(10)
+        .serializer(jacksonMitJavaTime()) // JacksonSerializer mit JavaTimeModule
+        .build();
+
+AIAgent<String, Entscheidung> agent = AIAgent.builder()
+        .promptExecutor(PromptExecutor.builder().openAI(apiKey, settings).build())
+        .agentConfig(config)
+        .toolRegistry(ToolRegistry.builder().tools(werkzeuge).build())
+        .functionalStrategy((AIAgentFunctionalContext ctx, String nachricht) ->
+                ctx.subtask(nachricht)
+                        .withOutput(Entscheidung.class)
+                        .withTools(werkzeuge)
+                        .run())
+        .build();
+
+Entscheidung entscheidung = agent.run(kundennachricht); // blockiert
+```
+
+**Was der Test zeigt:** zwei Anfragen, Koog fügt keinen eigenen Systemtext ein. Die strukturierte Ausgabe löst Koog über ein zusätzliches Tool `finalize_task_result`, das das Modell am Ende aufrufen muss (`tool_choice: "required"`). Die nativen Wege für strukturierte Ausgabe setzen Kotlin-Serialisierung voraus und sind mit Java-Records nicht nutzbar.
+
+Die Java-API funktioniert, man merkt ihr die Kotlin-Herkunft aber an:
+
+- **Der Serializer entscheidet still über Erfolg.** Ohne `agentConfig` nutzt `AIAgent.builder()` die Kotlin-Serialisierung, die Java-Records nicht kennt. Und ohne `JavaTimeModule` scheitert Jackson an `LocalDate`. In beiden Fällen wirft Koog keine Exception. Die Fehlermeldung geht als Tool-Ergebnis an das Modell, das dann ohne Bestelldaten entscheidet. Mit dem nachgebauten Endpunkt, der immer wieder das Finish-Tool aufrief, schickte Koog über 1.000 Anfragen, bis der Test-JVM der Speicher ausging. `maxAgentIterations` griff in diesem Fall nicht.
+- **Ein `boolean` im Ausgabe-Record** scheiterte mit `Can't compute ClassId for primitive type: boolean` in kotlin-reflect 2.3. Mit `Boolean` oder einer neueren kotlin-reflect-Version lief es.
+- **Für die OpenAI-Einstellungen** gibt es keinen Java-Builder, der Konstruktor von `OpenAIClientSettings` will alle sieben Argumente. Einige Java-Snippets der Dokumentation kompilieren nicht, etwa `@LLMDescription(description = "...")`.
+- **`koog-agents-jvm` bringt alle Anbieter mit:** Clients für OpenAI, Anthropic, Bedrock und Ollama, dazu das AWS-SDK, Ktor und OpenTelemetry. Daher die 140 Jars.
+
+**Orchestrierung:** Koogs Stärke sind Strategie-Graphen. Knoten und Kanten sind typisiert, ein Knoten kann ein LLM-Aufruf mit Tools sein oder reiner Java-Code. Zwei Features lassen sich einfach installieren: **Persistence** schreibt nach jedem Knoten einen Checkpoint, von dem aus ein abgebrochener Lauf weitergeht, und **OpenTelemetry** erzeugt Spans pro Knoten, LLM-Aufruf und Tool. [[9]][q9][[10]][q10] Dieser Graph lief im Test mit zwei Anfragen, zehn Checkpoints und zwanzig Spans:
+
+```java
+var graph = AIAgentGraphStrategy.builder("retoure")
+        .withInput(String.class)
+        .withOutput(Entscheidung.class);
+
+var pruefen = AIAgentSubgraph.builder("pruefen")          // LLM mit Tools
+        .limitedTools(werkzeuge)
+        .withInput(String.class)
+        .withOutput(Entscheidung.class)
+        .withTask(nachricht -> "Prüfe diesen Rückgabewunsch: " + nachricht)
+        .build();
+
+var etikettErstellen = AIAgentNode.builder("etikettErstellen")   // reiner Java-Code
+        .withInput(Entscheidung.class)
+        .withOutput(Entscheidung.class)
+        .withAction((entscheidung, ctx) -> new Entscheidung(true,
+                entscheidung.begruendung() + " Retourenetikett wurde erstellt."))
+        .build();
+
+graph.edge(graph.nodeStart, pruefen);
+graph.edge(AIAgentEdge.builder().from(pruefen).to(etikettErstellen)
+        .onCondition(Entscheidung::rueckgabeMoeglich).build());
+graph.edge(AIAgentEdge.builder().from(pruefen).to(graph.nodeFinish)
+        .onCondition(e -> !e.rueckgabeMoeglich()).build());
+graph.edge(etikettErstellen, graph.nodeFinish);
+
+AIAgent<String, Entscheidung> agent = AIAgent.builder()
+        .promptExecutor(executor)
+        .agentConfig(config)
+        .toolRegistry(ToolRegistry.builder().tools(werkzeuge).build())
+        .graphStrategy(graph.build())
+        .install(Persistence.Feature, cfg -> {
+            cfg.setStorage(checkpoints);
+            cfg.setEnableAutomaticPersistence(true);
+        })
+        .install(OpenTelemetry.Feature, cfg -> cfg.addSpanExporter(spans))
+        .build();
+```
+
+Persistence funktioniert nur mit Graph-Strategien, nicht mit der funktionalen Strategie aus dem ersten Beispiel.
+
+## Google ADK: Workflows und Gemini im Zentrum
+
+Googles Agent Development Kit gibt es seit März 2026 als Version 1.0 auch für Java. ADK ist auf Gemini ausgerichtet, unterstützt inzwischen aber auch Claude direkt und andere Modelle über eine Brücke zu LangChain4j. [[11]][q11][[12]][q12] Tools leitet ADK per Reflection aus Java-Methoden ab:
+
+```java
+public class BestellungTools {
+
+    private final BestellService service;
+
+    public BestellungTools(BestellService service) {
+        this.service = service;
+    }
+
+    @Schema(name = "bestellungLaden",
+            description = "Lädt eine Bestellung mit Lieferdatum, Rückgabefrist und ob die Frist noch offen ist.")
+    public Bestellung bestellungLaden(
+            @Schema(name = "bestellnummer", description = "Bestellnummer, z. B. A-1001") String bestellnummer) {
+        return service.laden(bestellnummer);
+    }
+}
+```
+
+```java
+LlmAgent agent = LlmAgent.builder()
+        .name("retouren_agent")
+        .description("Prüft Rückgabewünsche anhand der Bestelldaten.")
+        .model(modell)                       // z. B. "gemini-2.5-flash"
+        .instruction(ANWEISUNG)
+        .tools(FunctionTool.create(tools, "bestellungLaden"))
+        .outputSchema(FunctionCallingUtils.buildSchemaFromType(Entscheidung.class))
+        .outputKey("entscheidung")
+        .build();
+
+InMemoryRunner runner = new InMemoryRunner(agent, "retouren");
+Session session = runner.sessionService().createSession("retouren", "kunde-1").blockingGet();
+
+runner.runAsync("kunde-1", session.id(), Content.fromParts(Part.fromText(kundennachricht)))
+        .blockingForEach(event -> log.info(event.stringifyContent()));
+
+Object ergebnis = runner.sessionService()
+        .getSession("retouren", "kunde-1", session.id(), Optional.empty())
+        .blockingGet()
+        .state().get("entscheidung");
+Entscheidung entscheidung = JsonBaseModel.getMapper().convertValue(ergebnis, Entscheidung.class);
+```
+
+Das Ergebnis landet über `outputKey` im Session-State, der Aufruf liefert einen RxJava-`Flowable` mit Events. Das ist mehr Code als bei den anderen Frameworks, dafür bekommst du Sessions, Event-Historie und die Dev-UI von ADK gleich mit.
+
+**Was der Test zeigt:** zwei Anfragen. ADK hängt an die Anweisung einen eigenen Satz an: „You are an agent. Your internal name is "retouren_agent". …“. Und eine Aussage aus der Dokumentation stimmt nicht mehr: Dort heißt es, ein Agent mit `outputSchema` könne keine Tools nutzen. [[13]][q13] Seit Version 1.15 dürfen beide auf demselben Agenten stehen. Kann das Modell nicht beides gleichzeitig, hängt ADK ein Tool `set_model_response` an, über das das Modell das Ergebnis abgibt. [[12]][q12]
+
+Der größte Stolperstein betrifft alle, die nicht Gemini nutzen:
+
+- **Die LangChain4j-Brücke verwirft das `outputSchema` still.** Für Modelle wie GPT meldet ADK, sie könnten Schema und Tools zusammen, legt das Schema in die Anfrage, und die Brücke übernimmt es nicht. Das Modell antwortet dann in Prosa, und erst beim Umwandeln in den Record kracht es. Die Fehlermeldung von ADK sieht man nur mit einem SLF4J-Provider im Classpath. Die Lösung ist ein kleiner Wrapper, der die Fähigkeit ehrlich meldet, sodass ADK auf `set_model_response` umschaltet:
+
+```java
+public final class SchemaPerTool extends BaseLlm {
+
+    private final BaseLlm modell;
+
+    public SchemaPerTool(BaseLlm modell) {
+        super(modell.model());
+        this.modell = modell;
+    }
+
+    @Override
+    public Flowable<LlmResponse> generateContent(LlmRequest request, boolean stream) {
+        return modell.generateContent(request, stream);
+    }
+
+    @Override
+    public BaseLlmConnection connect(LlmRequest request) {
+        return modell.connect(request);
+    }
+
+    @Override
+    public LlmCapabilities capabilities() {
+        return LlmCapabilities.builder().outputSchemaAndTools(false).build();
+    }
+}
+
+BaseLlm modell = new SchemaPerTool(LangChain4j.builder().chatModel(openAiChatModel).build());
+```
+
+- **`LocalDate` kommt als Array beim Modell an** (`[2026,11,10]`), weil ADKs Jackson-Konfiguration Datumswerte als Zahlen schreibt. `@JsonFormat(shape = STRING)` am Record behebt das.
+- **Das aus dem Record abgeleitete Schema hat keine Pflichtfelder**, solange die Komponenten nicht `@JsonProperty(required = true)` tragen.
+- **`FunctionTool.create(Klasse, name)` findet nur statische Methoden.** Für eine Instanz mit Abhängigkeiten nimmst du `FunctionTool.create(instanz, name)`.
+
+**Orchestrierung:** ADK kennt Workflow-Agenten (`SequentialAgent`, `ParallelAgent`, `LoopAgent`), die Daten über den Session-State austauschen. Seit Version 1.13 gibt es zusätzlich einen Workflow-Graphen, noch als experimentell markiert. Seine Knoten sind Java-Funktionen oder LLM-Agenten, Kanten können anhand von Werten verzweigen. [[14]][q14] Im Test hat ein Graph die Bestellung in Java geladen und nach der Frist verzweigt: Bei offener Frist formuliert ein LLM-Agent die Begründung, bei abgelaufener Frist erzeugt Java-Code die Ablehnung. Das ergab eine Anfrage beziehungsweise gar keine.
+
+Der Preis für den Funktionsumfang sind die Abhängigkeiten. `google-adk` allein bringt rund 200 Jars mit, darunter das Anthropic-SDK, mehrere Google-Cloud-Clients, gRPC, Apache Arrow und docker-java.
+
+## Was die Requests verraten
+
+Alle fünf Frameworks haben die Aufgabe mit zwei Anfragen gelöst. Die Unterschiede liegen darin, wie sie die strukturierte Ausgabe erzwingen und was sie ungefragt in den Prompt schreiben:
+
+| | Strukturierte Ausgabe im Standard | Natives JSON-Schema | Zusätzlicher Text im Prompt |
+|---|---|---|---|
+| Spring AI | JSON-Schema als Text in der Nutzernachricht | mit `ENABLE_NATIVE_STRUCTURED_OUTPUT` | Formatanweisung |
+| LangChain4j | Formatbeschreibung als Text in der Nutzernachricht | mit `RESPONSE_FORMAT_JSON_SCHEMA` | Formatanweisung |
+| Embabel | JSON-Schema als Text im System-Prompt | im Test nicht genutzt | aktuelles Datum, Formatanweisung |
+| Koog | zusätzliches Tool `finalize_task_result` | nur mit Kotlin-Serialisierung | keiner |
+| Google ADK | über die LangChain4j-Brücke gar nicht, sonst Tool `set_model_response` | nativ mit Gemini auf Vertex AI | Name und Beschreibung des Agenten |
+
+Für die Praxis heißt das: Prüfe bei jedem Framework, ob die strukturierte Ausgabe wirklich erzwungen oder nur erbeten wird. Mit einem guten Modell fällt der Unterschied selten auf, mit einem kleinen lokalen Modell oft. Und schreib dir einen Test, der die Request-Bodies ansieht. Mehrere Stolpersteine aus diesem Artikel habe ich nur dort gesehen, nicht in einer Fehlermeldung.
+
+## Welches Framework passt zu welchem Projekt?
+
+| Deine Situation | Meine Wahl |
+|---|---|
+| Spring-Boot-Anwendung, ein Agent mit Tools oder ein fester Ablauf | **Spring AI** |
+| Mehrere zusammenarbeitende Agenten, mit Spring, Quarkus oder ohne Framework | **LangChain4j agentic** |
+| Geschäftsprozess mit vielen festen Schritten und wenigen Stellen, an denen ein Modell entscheiden muss, im Spring-Umfeld | **Embabel** |
+| Langlaufende Agenten, die nach einem Abbruch weiterlaufen müssen, mit Tracing pro Schritt, Kotlin im Team | **Koog** |
+| Gemini oder Vertex AI, Google Cloud, Agenten über A2A verbinden | **Google ADK** |
+
+Wenn du unsicher bist, würde ich mit dem beginnen, was dein Stack schon mitbringt. In einer Spring-Boot-Anwendung ist das Spring AI, sonst ein AI Service aus LangChain4j. Beide reichen für einen Agenten mit Tools, und der Wechsel zu einem spezialisierten Framework ist leichter, wenn die Tools sauber als eigene Klassen vorliegen.
+
+Interessant finde ich, wohin sich die Frameworks bewegen. Embabel plant über Typen, Koog und ADK setzen auf Graphen mit Java-Knoten, LangChain4j ergänzt Planungsmuster wie GOAP. Alle verlagern Entscheidungen vom Modell zurück in den Code. Das Modell übernimmt nur noch die Schritte, die Sprachverständnis brauchen. Genau das macht Agenten günstiger, vorhersagbarer und testbar.
+
+## Ausblick: Spring AI Agent und Jakarta Agentic AI
+
+Zwei Entwicklungen würde ich im Blick behalten:
+
+- **Spring AI Agent** soll Anfang Dezember 2026 als experimentelles Projekt starten und 2027 in Spring AI 3.0 aufgehen. Für Spring-Teams könnte das die Lücke schließen, die heute Embabel oder LangChain4j füllen. [[1]][q1]
+- **Jakarta Agentic AI** ist die Spezifikation der Eclipse Foundation für Agenten in Jakarta EE. Ein erster Meilenstein 1.0.0-M1 liegt seit Juli 2026 als Entwurf vor, eine finale Version gibt es noch nicht. [[15]][q15]
+
+## Fazit
+
+Alle fünf Frameworks haben die Aufgabe gelöst, mit gleich vielen Modellaufrufen. Den Ausschlag geben deshalb andere Fragen: Wie passt das Framework zu deinem Stack, wie viele Abhängigkeiten holst du dir ins Projekt, und wie gut kannst du nachvollziehen, was es an das Modell schickt?
+
+Spring AI und LangChain4j bleiben für die meisten Java-Projekte der Startpunkt. Embabel, Koog und Google ADK lohnen sich, wenn ihre besondere Idee zu deinem Problem passt: Planung über Typen, Graphen mit Checkpoints oder die Google-Plattform. Bei allen drei würde ich mehr Zeit für Tests einplanen, denn ihre Stolpersteine zeigen sich selten als Fehlermeldung, sondern als stilles Fehlverhalten.
+
+## Häufige Fragen zu Java Agent Frameworks
+
+### Welches Agent-Framework ist das beste für Java?
+
+Das hängt vom Stack ab. In einer Spring-Boot-Anwendung ist Spring AI der naheliegende Start, für mehrere zusammenarbeitende Agenten bietet LangChain4j agentic die meisten fertigen Muster. Embabel, Koog und Google ADK sind stark, wenn du ihre besondere Idee brauchst: Planung über Typen, Graphen mit Checkpoints oder Gemini und Google Cloud.
+
+### Brauche ich für einen AI Agent in Java ein eigenes Agent-Framework?
+
+Für einen einzelnen Agenten mit Tools nicht. Ein `ChatClient` aus Spring AI oder ein AI Service aus LangChain4j führt die Tool-Schleife bereits aus. Ein Agent-Framework lohnt sich, wenn mehrere Agenten zusammenarbeiten, Abläufe nach einem Abbruch weiterlaufen müssen oder ein Planer die Reihenfolge der Schritte bestimmen soll.
+
+### Ist LangChain4j agentic produktionsreif?
+
+Das Modul ist offiziell experimentell. In meinem Test war die Kern-API zwischen Version 1.18 und 1.24 aber stabil, der Code lief unverändert. Wer es einsetzt, sollte Versionssprünge mit Tests absichern und die Release Notes auf Verhaltensänderungen lesen.
+
+### Kann ich Embabel ohne Spring Boot nutzen?
+
+Nein. Embabel ist als Spring-Boot-Starter gebaut, Agenten sind Spring-Beans, und Modelle werden über die Autokonfiguration eingebunden. Version 1.5.4 baut auf Spring Boot 4.1 und Spring AI 2.0 auf.
+
+### Funktioniert Google ADK mit OpenAI-Modellen?
+
+Ja, über die Brücke `google-adk-langchain4j` mit einem `ChatModel` aus LangChain4j. In Version 1.15 verwirft diese Brücke aber das `outputSchema`, solange du dem Modell nicht über einen kleinen Wrapper die passende Fähigkeit zuweist. Gemini und Claude unterstützt ADK direkt.
+
+### Kann ich Koog mit Java statt Kotlin nutzen?
+
+Ja, seit März 2026 hat Koog eine Java-API mit Buildern und blockierenden Aufrufen. Für strukturierte Ausgabe mit Java-Records brauchst du den `JacksonSerializer`, und einige Beispiele der Dokumentation sind noch Kotlin-lastig oder kompilieren in Java nicht.
+
+### Was ist Spring AI Agent?
+
+Ein neues Projekt des Spring-Teams für das Zusammensetzen und Orchestrieren mehrerer Agenten. Es soll Anfang Dezember 2026 als experimentelles Projekt auf Basis von Spring AI 2.1 starten und 2027 in Spring AI 3.0 aufgehen.
+
+## Quellen
+
+1. [Spring Blog: Spring AI 2.1.0 GA and 2.0.3 GA Available Now][q1]
+2. [Spring AI: Structured Output Converter][q2]
+3. [LangChain4j: Agents and Agentic AI][q3]
+4. [LangChain4j: Structured Outputs][q4]
+5. [LangChain4j: Release 1.24.0][q5]
+6. [Embabel: User Guide 1.5.4][q6]
+7. [Embabel: Release 1.5.4][q7]
+8. [JetBrains Blog: Koog 1.0 Is Out][q8]
+9. [Koog: Graph-based Agents][q9]
+10. [Koog: Agent Persistence][q10]
+11. [Google Developers Blog: Announcing ADK for Java 1.0.0][q11]
+12. [Google ADK for Java: Release 1.15.0][q12]
+13. [Google ADK: LLM Agents][q13]
+14. [Google ADK: Graph Workflows][q14]
+15. [Jakarta Agentic AI 1.0][q15]
+16. [Embabel: Release 1.0.0][q16]
+17. [JetBrains Blog: Koog Comes to Java][q17]
+18. [LangChain4j: Tools (Function Calling)][q18]
+
+[q1]: https://spring.io/blog/2026/11/20/spring-ai-2-1-0-GA-available-now "Spring Blog: Spring AI 2.1.0 GA and 2.0.3 GA Available Now"
+[q2]: https://docs.spring.io/spring-ai/reference/api/structured-output-converter.html "Spring AI: Structured Output Converter"
+[q3]: https://docs.langchain4j.dev/tutorials/agents "LangChain4j: Agents and Agentic AI"
+[q4]: https://docs.langchain4j.dev/tutorials/structured-outputs "LangChain4j: Structured Outputs"
+[q5]: https://github.com/langchain4j/langchain4j/releases/tag/1.24.0 "LangChain4j: Release 1.24.0"
+[q6]: https://docs.embabel.com/embabel-agent/guide/1.5.4/ "Embabel: User Guide 1.5.4"
+[q7]: https://github.com/embabel/embabel-agent/releases/tag/v1.5.4 "Embabel: Release 1.5.4"
+[q8]: https://blog.jetbrains.com/ai/2026/05/koog-1-0-is-out-stable-core-better-interop-and-multiplatform-observability/ "JetBrains Blog: Koog 1.0 Is Out"
+[q9]: https://docs.koog.ai/agents/graph-based-agents/ "Koog: Graph-based Agents"
+[q10]: https://docs.koog.ai/features/agent-persistence/ "Koog: Agent Persistence"
+[q11]: https://developers.googleblog.com/announcing-adk-for-java-100-building-the-future-of-ai-agents-in-java/ "Google Developers Blog: Announcing ADK for Java 1.0.0"
+[q12]: https://github.com/google/adk-java/releases/tag/v1.15.0 "Google ADK for Java: Release 1.15.0"
+[q13]: https://adk.dev/agents/llm-agents/ "Google ADK: LLM Agents"
+[q14]: https://adk.dev/graphs/ "Google ADK: Graph Workflows"
+[q15]: https://jakarta.ee/specifications/agentic-ai/1.0/ "Jakarta Agentic AI 1.0"
+[q16]: https://github.com/embabel/embabel-agent/releases/tag/v1.0.0 "Embabel: Release 1.0.0"
+[q17]: https://blog.jetbrains.com/ai/2026/03/koog-comes-to-java/ "JetBrains Blog: Koog Comes to Java"
+[q18]: https://docs.langchain4j.dev/tutorials/tools "LangChain4j: Tools (Function Calling)"

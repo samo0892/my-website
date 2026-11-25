@@ -445,7 +445,7 @@ Für einen Agenten wie im Support-Beispiel reichen beide Frameworks. Die Untersc
 - **Spring AI** führt die Tool-Schleife seit Version 2.0 als Advisor im `ChatClient` aus. Sie lässt sich mit eigenen Advisors erweitern und passt sich nahtlos in eine Spring-Boot-Anwendung ein. Muster wie Chain, Routing oder Orchestrator-Workers zeigt die Dokumentation als Beispielcode; umsetzen musst du sie in deiner Anwendung selbst. [[3]][q3]
 - **LangChain4j** bietet mit `langchain4j-agentic` fertige Bausteine für Workflows, Supervisor und Human-in-the-Loop. Das spart Code, das Modul ist aber noch experimentell. [[8]][q8]
 
-Wenn deine Anwendung bereits auf Spring Boot läuft, würde ich mit Spring AI beginnen und einzelne Abläufe als Workflow im eigenen Code abbilden. Wer mehrere zusammenarbeitende Agenten braucht und mit einer sich noch ändernden API leben kann, findet in LangChain4j mehr fertige Muster. Einen ausführlichen Vergleich findest du in meinem Artikel [Spring AI vs. LangChain4j](/blog/spring-ai-vs-langchain4j#und-was-ist-mit-ai-agents).
+Wenn deine Anwendung bereits auf Spring Boot läuft, würde ich mit Spring AI beginnen und einzelne Abläufe als Workflow im eigenen Code abbilden. Wer mehrere zusammenarbeitende Agenten braucht und mit einer sich noch ändernden API leben kann, findet in LangChain4j mehr fertige Muster. Einen ausführlichen Vergleich findest du in meinem Artikel [Spring AI vs. LangChain4j](/blog/spring-ai-vs-langchain4j#und-was-ist-mit-ai-agents). Wie sich daneben die spezialisierten Frameworks Embabel, Koog und Google ADK am selben Beispiel schlagen, zeige ich im [Vergleich der Java Agent Frameworks](/blog/java-agent-frameworks-vergleich).
 
 ## Fazit: Agenten sind ein Werkzeug, kein Ziel
 
